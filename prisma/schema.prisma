@@ -1,0 +1,272 @@
+// Queens Buying Group - Database Schema
+// Using Supabase PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  SELLER
+  ADMIN
+  WORKER
+}
+
+enum DealStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  EXPIRED
+  CLOSED
+}
+
+enum DealPriceType {
+  BELOW_COST    // Payout < Retail (normal)
+  RETAIL        // Payout = Retail
+  ABOVE_RETAIL  // Payout > Retail
+}
+
+enum CommitmentStatus {
+  // Shipping flow
+  PENDING           // Committed, not shipped yet
+  IN_TRANSIT        // Tracking submitted, in transit
+  DELIVERED         // Delivered to warehouse
+  
+  // Drop-off flow
+  DROP_OFF_PENDING  // Marked for drop-off, waiting for user to arrive
+  
+  // Final states
+  FULFILLED         // Invoice attached, closed out
+  CANCELLED
+}
+
+enum DeliveryMethod {
+  SHIP
+  DROP_OFF
+}
+
+enum LabelRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TrackingCarrier {
+  FEDEX
+  UPS
+  USPS
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+// User profile extends Supabase auth.users
+model Profile {
+  id            String   @id @default(cuid())
+  authId        String   @unique // Links to Supabase auth.users.id
+  email         String   @unique
+  firstName     String
+  lastName      String
+  phone         String?
+  role          UserRole @default(SELLER)
+  
+  // Vendor ID: Auto-incrementing number, displayed as U-XXXXX
+  vendorNumber  Int      @unique @default(autoincrement())
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  commitments     Commitment[]
+  labelRequests   LabelRequest[]
+  trackings       Tracking[]
+  invoicesReceived Invoice[]
+  
+  // Admin relations
+  processedLabels LabelRequest[] @relation("ProcessedByAdmin")
+  createdDeals    Deal[] @relation("CreatedByAdmin")
+  processedCommitments Commitment[] @relation("ProcessedByAdmin")
+  
+  @@index([authId])
+  @@index([email])
+  @@index([vendorNumber])
+}
+
+model Deal {
+  id              String        @id @default(cuid())
+  dealNumber      Int           @unique @default(autoincrement()) // Display as D-XXXXX
+  title           String
+  description     String
+  imageUrl        String?
+  
+  // Pricing
+  retailPrice     Decimal       @db.Decimal(10, 2)
+  payout          Decimal       @db.Decimal(10, 2)
+  priceType       DealPriceType @default(BELOW_COST)
+  
+  // Limits
+  maxQuantity     Int?          // Total max
+  limitPerVendor  Int?          // Per vendor limit
+  freeLabelMin    Int?          // Min qty for free label
+  
+  status          DealStatus    @default(DRAFT)
+  deadline        DateTime?     // Deadline to deliver
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relations
+  createdBy       Profile       @relation("CreatedByAdmin", fields: [createdById], references: [id])
+  createdById     String
+  commitments     Commitment[]
+  labelRequests   LabelRequest[]
+  
+  @@index([status])
+  @@index([createdAt])
+  @@index([deadline])
+}
+
+model Commitment {
+  id              String           @id @default(cuid())
+  commitmentNumber Int             @unique @default(autoincrement()) // Display as C-XXXXX
+  quantity        Int
+  status          CommitmentStatus @default(PENDING)
+  deliveryMethod  DeliveryMethod
+  warehouse       String           // MA, NJ, CT, DE
+  
+  // Timestamps
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  fulfilledAt     DateTime?
+  
+  // Admin notes
+  notes           String?
+  
+  // Relations
+  deal            Deal             @relation(fields: [dealId], references: [id])
+  dealId          String
+  user            Profile          @relation(fields: [userId], references: [id])
+  userId          String
+  
+  // Tracking (if shipped)
+  tracking        Tracking?
+  
+  // Label request (if requested)
+  labelRequest    LabelRequest?
+  
+  // Invoice (when fulfilled)
+  invoice         Invoice?
+  
+  // Admin who fulfilled
+  fulfilledBy     Profile?         @relation("ProcessedByAdmin", fields: [fulfilledById], references: [id])
+  fulfilledById   String?
+  
+  @@index([status])
+  @@index([userId])
+  @@index([dealId])
+  @@index([warehouse])
+}
+
+model Tracking {
+  id              String          @id @default(cuid())
+  trackingNumber  String
+  carrier         TrackingCarrier
+  
+  // Status updates (could be fetched from carrier API)
+  lastStatus      String?
+  lastLocation    String?
+  estimatedDelivery DateTime?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  commitment      Commitment      @relation(fields: [commitmentId], references: [id])
+  commitmentId    String          @unique
+  user            Profile         @relation(fields: [userId], references: [id])
+  userId          String
+  
+  @@index([trackingNumber])
+  @@index([userId])
+}
+
+model LabelRequest {
+  id            String             @id @default(cuid())
+  status        LabelRequestStatus @default(PENDING)
+  labelUrl      String?            // Legacy single URL (deprecated)
+  labelFiles    Json?              // Array of file URLs: [{name, url, uploadedAt}]
+  notes         String?            // Admin rejection reason
+  
+  createdAt     DateTime           @default(now())
+  processedAt   DateTime?
+  
+  // Relations
+  commitment    Commitment         @relation(fields: [commitmentId], references: [id])
+  commitmentId  String             @unique
+  user          Profile            @relation(fields: [userId], references: [id])
+  userId        String
+  deal          Deal               @relation(fields: [dealId], references: [id])
+  dealId        String
+  
+  // Admin who processed
+  processedBy   Profile?           @relation("ProcessedByAdmin", fields: [processedById], references: [id])
+  processedById String?
+  
+  @@index([status])
+  @@index([userId])
+}
+
+model Invoice {
+  id            String     @id @default(cuid())
+  skynovaUrl    String     // Skynova purchase order URL
+  amount        Decimal    @db.Decimal(10, 2)
+  status        String     @default("PENDING") // PENDING, PAID
+  
+  // Payment info (admin fills in when paid)
+  checkNumber   String?
+  checkImageUrl String?
+  notes         String?
+  
+  createdAt     DateTime   @default(now())
+  paidAt        DateTime?
+  
+  // Relations
+  commitment    Commitment @relation(fields: [commitmentId], references: [id])
+  commitmentId  String     @unique
+  user          Profile    @relation(fields: [userId], references: [id])
+  userId        String
+  
+  @@index([userId])
+  @@index([status])
+}
+
+// Warehouse addresses (admin configurable)
+model Warehouse {
+  id              String   @id @default(cuid())
+  code            String   @unique // MA, NJ, CT, DE, NY
+  name            String
+  address         String?
+  city            String?
+  state           String?
+  zip             String?
+  phone           String?
+  isActive        Boolean  @default(true)
+  
+  // Delivery method availability
+  allowDropOff    Boolean  @default(true)
+  allowShipping   Boolean  @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
