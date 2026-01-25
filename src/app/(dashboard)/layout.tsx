@@ -108,7 +108,7 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-slate-50">
       <Sidebar
-        role={profile.role}
+        role={profile.role as "SELLER" | "ADMIN" | "WORKER"}
         user={{
           firstName: profile.firstName,
           lastName: profile.lastName,

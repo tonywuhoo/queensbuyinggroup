@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function ConfirmPage() {
+function ConfirmContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState("Confirming your email...");
@@ -39,11 +39,26 @@ export default function ConfirmPage() {
   }, [searchParams, router]);
 
   return (
+    <div className="text-center text-white">
+      <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+      <p className="text-lg">{status}</p>
+    </div>
+  );
+}
+
+export default function ConfirmPage() {
+  return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-queens-black to-purple-950">
-      <div className="text-center text-white">
-        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-lg">{status}</p>
-      </div>
+      <Suspense
+        fallback={
+          <div className="text-center text-white">
+            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-lg">Loading...</p>
+          </div>
+        }
+      >
+        <ConfirmContent />
+      </Suspense>
     </div>
   );
 }

@@ -86,7 +86,7 @@ export async function getAuthProfile() {
             email: user.email!,
             firstName: user.user_metadata?.first_name || "",
             lastName: user.user_metadata?.last_name || "",
-            role: user.user_metadata?.role || "SELLER",
+            role: (user.user_metadata?.role as "SELLER" | "ADMIN" | "WORKER") || "SELLER",
           }
         });
         console.log("Profile created:", profile.id, "VendorNumber:", profile.vendorNumber);
