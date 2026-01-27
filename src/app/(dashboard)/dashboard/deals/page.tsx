@@ -155,9 +155,27 @@ export default function DealsPage() {
                   isExpired ? "border-slate-300 opacity-75" : "border-slate-200"
                 }`}
               >
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start gap-4 mb-3">
+                  {/* Product Image */}
+                  <div className="w-20 h-20 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
+                    {deal.imageUrl ? (
+                      <img
+                        src={deal.imageUrl}
+                        alt={deal.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div className={`w-full h-full flex items-center justify-center ${deal.imageUrl ? 'hidden' : ''}`}>
+                      <Package className="w-8 h-8 text-slate-300" />
+                    </div>
+                  </div>
+
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-mono bg-queens-purple/10 text-queens-purple px-2 py-0.5 rounded">
                         {deal.dealId}
                       </span>

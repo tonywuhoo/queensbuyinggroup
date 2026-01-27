@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, DollarSign, Package, Clock, Tag } from "lucide-react";
+import { ArrowLeft, DollarSign, Package, Clock, Tag, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ export default function NewDealPage() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    imageUrl: "",
     retailPrice: "",
     payout: "",
     limitPerVendor: "",
@@ -37,6 +38,7 @@ export default function NewDealPage() {
         body: JSON.stringify({
           title: formData.title,
           description: formData.description,
+          imageUrl: formData.imageUrl || null,
           retailPrice: parseFloat(formData.retailPrice),
           payout: parseFloat(formData.payout),
           limitPerVendor: formData.limitPerVendor ? parseInt(formData.limitPerVendor) : null,
@@ -116,6 +118,46 @@ export default function NewDealPage() {
                 className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-queens-purple/20"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Product Image */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <ImageIcon className="w-4 h-4 text-purple-600" />
+            Product Image
+          </h2>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="imageUrl">Image URL</Label>
+              <Input
+                id="imageUrl"
+                type="url"
+                value={formData.imageUrl}
+                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                placeholder="https://example.com/product-image.jpg"
+                className="mt-1"
+              />
+              <p className="text-xs text-slate-500 mt-1">Paste a direct link to the product image</p>
+            </div>
+
+            {/* Image Preview */}
+            {formData.imageUrl && (
+              <div className="mt-3">
+                <p className="text-sm text-slate-600 mb-2">Preview:</p>
+                <div className="w-32 h-32 rounded-lg border border-slate-200 overflow-hidden bg-slate-50">
+                  <img
+                    src={formData.imageUrl}
+                    alt="Product preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "https://via.placeholder.com/128?text=Invalid+URL";
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

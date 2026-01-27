@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log("Creating deal with data:", body);
     
-    const { title, description, retailPrice, payout, limitPerVendor, freeLabelMin, deadline, status } = body;
+    const { title, description, imageUrl, retailPrice, payout, limitPerVendor, freeLabelMin, deadline, status } = body;
 
     if (!title || retailPrice === undefined || payout === undefined) {
       return errorResponse("Missing required fields: title, retailPrice, payout");
@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
       data: {
         title,
         description: description || "",
+        imageUrl: imageUrl || null,
         retailPrice: retailNum,
         payout: payoutNum,
         priceType,

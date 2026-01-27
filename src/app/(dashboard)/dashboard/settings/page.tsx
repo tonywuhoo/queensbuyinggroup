@@ -2,38 +2,54 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, Lock, Save } from "lucide-react";
-import { Header } from "@/components/dashboard/header";
+import { User, Lock, Save, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 
+interface UserProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  vendorId: string;
+}
+
 export default function SettingsPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone?: string;
-  } | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) {
-          setUser(data.user);
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch("/api/profile", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+        } else {
+          setError("Failed to load profile");
         }
-      });
+      } catch (e) {
+        console.error("Error fetching profile:", e);
+        setError("Error loading profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
   }, []);
 
   async function handleProfileUpdate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setIsLoading(true);
+    setIsProfileLoading(true);
 
     const formData = new FormData(e.currentTarget);
     const data = {
@@ -43,15 +59,20 @@ export default function SettingsPage() {
     };
 
     try {
-      const response = await fetch("/api/users/me", {
+      const response = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update profile");
+        const resData = await response.json();
+        throw new Error(resData.error || "Failed to update profile");
       }
+
+      const updatedUser = await response.json();
+      setUser(updatedUser);
 
       toast({
         title: "Profile updated",
@@ -59,14 +80,14 @@ export default function SettingsPage() {
       });
 
       router.refresh();
-    } catch {
+    } catch (err) {
       toast({
         title: "Error",
-        description: "Failed to update profile. Please try again.",
+        description: err instanceof Error ? err.message : "Failed to update profile.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsProfileLoading(false);
     }
   }
 
@@ -75,7 +96,6 @@ export default function SettingsPage() {
     setIsPasswordLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const currentPassword = formData.get("currentPassword") as string;
     const newPassword = formData.get("newPassword") as string;
     const confirmPassword = formData.get("confirmPassword") as string;
 
@@ -89,11 +109,22 @@ export default function SettingsPage() {
       return;
     }
 
+    if (newPassword.length < 8) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 8 characters.",
+        variant: "destructive",
+      });
+      setIsPasswordLoading(false);
+      return;
+    }
+
     try {
-      const response = await fetch("/api/users/me/password", {
+      const response = await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        credentials: "include",
+        body: JSON.stringify({ newPassword }),
       });
 
       if (!response.ok) {
@@ -108,10 +139,10 @@ export default function SettingsPage() {
 
       // Reset form
       (e.target as HTMLFormElement).reset();
-    } catch (error) {
+    } catch (err) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to change password.",
+        description: err instanceof Error ? err.message : "Failed to change password.",
         variant: "destructive",
       });
     } finally {
@@ -119,25 +150,45 @@ export default function SettingsPage() {
     }
   }
 
-  if (!user) {
+  if (loading) {
     return (
-      <div>
-        <Header title="Settings" />
-        <div className="p-6">
-          <p className="text-muted-foreground">Loading...</p>
+      <div className="p-6 flex items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-2 border-queens-purple border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error || !user) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500" />
+          <p className="text-red-700">{error || "Failed to load profile"}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <Header
-        title="Settings"
-        description="Manage your account settings and preferences"
-      />
+    <div className="p-4 lg:p-6 max-w-2xl mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <p className="text-slate-500 text-sm">Manage your account settings and preferences</p>
+      </div>
 
-      <div className="p-6 max-w-2xl space-y-6">
+      <div className="space-y-6">
+        {/* Vendor ID Display */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-slate-500">Your Vendor ID</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold font-mono text-queens-purple">{user.vendorId}</p>
+            <p className="text-sm text-slate-500 mt-1">Use this ID when communicating with the admin</p>
+          </CardContent>
+        </Card>
+
         {/* Profile Settings */}
         <Card>
           <CardHeader>
@@ -181,9 +232,9 @@ export default function SettingsPage() {
                   type="email"
                   value={user.email}
                   disabled
-                  className="bg-muted"
+                  className="bg-slate-50"
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-slate-500">
                   Contact support to change your email address
                 </p>
               </div>
@@ -200,8 +251,12 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex justify-end">
-                <Button type="submit" variant="purple" loading={isLoading}>
-                  <Save className="w-4 h-4 mr-2" />
+                <Button type="submit" disabled={isProfileLoading}>
+                  {isProfileLoading ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
                   Save Changes
                 </Button>
               </div>
@@ -225,16 +280,6 @@ export default function SettingsPage() {
           <CardContent>
             <form onSubmit={handlePasswordChange} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="currentPassword">Current Password</Label>
-                <Input
-                  id="currentPassword"
-                  name="currentPassword"
-                  type="password"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="newPassword">New Password</Label>
                 <Input
                   id="newPassword"
@@ -243,8 +288,8 @@ export default function SettingsPage() {
                   required
                   minLength={8}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Must be at least 8 characters with 1 uppercase letter and 1 number
+                <p className="text-xs text-slate-500">
+                  Must be at least 8 characters
                 </p>
               </div>
 
@@ -259,7 +304,10 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex justify-end">
-                <Button type="submit" loading={isPasswordLoading}>
+                <Button type="submit" variant="outline" disabled={isPasswordLoading}>
+                  {isPasswordLoading && (
+                    <div className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin mr-2" />
+                  )}
                   Change Password
                 </Button>
               </div>

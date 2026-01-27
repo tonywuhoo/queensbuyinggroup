@@ -1,60 +1,210 @@
 # Queens Buying Group
 
-A modern, elegant platform for managing buying group operations. Built with Next.js 14, Supabase, and Prisma.
+A wholesale vendor management platform for coordinating deals, commitments, tracking, and payouts across multiple warehouse locations.
 
-![Queens Buying Group](https://via.placeholder.com/1200x630/0A0A0A/D4AF37?text=Queens+Buying+Group)
+![Next.js](https://img.shields.io/badge/Next.js-14.2-black)
+![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20DB-green)
+![Prisma](https://img.shields.io/badge/Prisma-ORM-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue)
 
-## Features
+---
 
-### For Sellers
-- 🏷️ **Browse Deals** — View active deals with competitive prices
-- 📦 **Commit to Deals** — Commit your inventory quantities
-- 🚚 **Track Shipments** — Add tracking numbers and monitor status
-- 📋 **Request Labels** — Request shipping labels from admins
+## 🏗️ System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         FRONTEND                                │
+│  Next.js 14 (App Router) + React 18 + Tailwind CSS             │
+│  - Server Components for fast page loads                        │
+│  - Client Components for interactivity                          │
+│  - Responsive design (mobile-first)                             │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      API LAYER                                  │
+│  Next.js API Routes (/api/*)                                    │
+│  - RESTful endpoints                                            │
+│  - Role-based access control                                    │
+│  - JWT validation via Supabase                                  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    BACKEND SERVICES                             │
+├─────────────────┬─────────────────┬─────────────────────────────┤
+│   Supabase      │    Prisma       │    Supabase Storage         │
+│   Auth          │    ORM          │    (Labels/Files)           │
+│   - Email/Pass  │    - PostgreSQL │    - Private bucket         │
+│   - JWT tokens  │    - Migrations │    - Signed URLs            │
+│   - Sessions    │    - Type-safe  │    - Auth-protected         │
+└─────────────────┴─────────────────┴─────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    DATABASE (Supabase PostgreSQL)               │
+│  - Profiles, Deals, Commitments, Tracking, Labels, Invoices    │
+│  - Auto-incrementing IDs (U-XXXXX, D-XXXXX, C-XXXXX)           │
+│  - Connection pooling for serverless                            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔐 Authentication Flow
+
+### Supabase Auth Integration
+
+```
+┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+│  Login   │────▶│ Supabase │────▶│  JWT     │────▶│ Dashboard│
+│  Page    │     │  Auth    │     │  Cookie  │     │  Access  │
+└──────────┘     └──────────┘     └──────────┘     └──────────┘
+     │                                                   │
+     │           Email Confirmation Flow                 │
+     │    ┌──────────────────────────────────┐          │
+     └───▶│ /auth/callback (PKCE exchange)   │──────────┘
+          └──────────────────────────────────┘
+```
+
+### Auth Features
+- **Email/Password authentication**
+- **Email confirmation** (optional, configurable)
+- **Password reset** via email
+- **Session management** with HTTP-only cookies
+- **Role-based access control** (SELLER, ADMIN, WORKER)
+- **Auto-redirect** based on user role
+
+### Middleware Protection
+```typescript
+// Middleware refreshes session on every request
+// Protects /dashboard/* and /admin/* routes
+// Redirects unauthenticated users to /login
+```
+
+---
+
+## 👥 User Roles
+
+| Role | Access | Capabilities |
+|------|--------|--------------|
+| **SELLER** | `/dashboard/*` | View deals, make commitments, request labels, submit tracking |
+| **ADMIN** | `/admin/*` | Manage deals, users, fulfill commitments, process labels, invoicing |
+| **WORKER** | `/admin/*` (limited) | Process commitments, handle drop-offs |
+
+---
+
+## 📦 Features
+
+### For Sellers (Vendors)
+
+| Feature | Description |
+|---------|-------------|
+| **Browse Deals** | View active deals with pricing, limits, deadlines |
+| **Make Commitments** | Commit to deals (quantity only, delivery method later) |
+| **My Commitments** | Manage commitments, set delivery method (Ship/Drop-off), select warehouse |
+| **Request Labels** | Request shipping labels for commitments |
+| **Submit Tracking** | Enter tracking numbers for shipped items |
+| **Tracking History** | View shipment status (FedEx, UPS, USPS integration ready) |
+| **Invoices** | View payout invoices from admin |
 
 ### For Admins
-- 📊 **Dashboard Overview** — Monitor all platform activity
-- 🏷️ **Manage Deals** — Create, edit, and manage deals
-- 👥 **User Management** — Search and manage seller accounts
-- 📋 **Label Queue** — Process shipping label requests
-- ✅ **Update Commitments** — Mark commitments as received/fulfilled
 
-### Powered by Supabase
-- 🔐 **Secure Authentication** — Email/password with automatic sessions
-- 📧 **Password Reset** — Built-in email recovery flow
-- 🗄️ **PostgreSQL Database** — Hosted, scalable, reliable
+| Feature | Description |
+|---------|-------------|
+| **Deal Management** | Create, edit, activate/pause/close deals |
+| **User Management** | View all vendors, see their commitments |
+| **Commitment Overview** | See all commitments, filter by warehouse/status |
+| **Process Labels** | Upload label files, approve/reject requests |
+| **Drop-off Management** | Handle in-person warehouse drop-offs |
+| **Invoicing** | Attach Skynova invoice links, mark paid/pending |
+| **Warehouse Settings** | Configure warehouses, drop-off vs ship-only |
 
-## Quick Start
+---
 
-### 1. Create a Supabase Project
+## 🗄️ Database Schema
 
-1. Go to [supabase.com](https://supabase.com) and create a free account
-2. Create a new project
-3. Wait for the database to be provisioned (~2 minutes)
+### Core Models
 
-### 2. Get Your Credentials
+```prisma
+Profile          # User profiles (linked to Supabase Auth)
+├── vendorNumber # Auto-increment, displayed as U-XXXXX
+├── role         # SELLER | ADMIN | WORKER
+└── authId       # Links to Supabase user
 
-From your Supabase dashboard:
-1. Go to **Settings** → **API**
-2. Copy your **Project URL** and **anon/public** key
-3. Go to **Settings** → **Database**
-4. Copy the **Connection string** (URI format)
+Deal             # Product deals from admin
+├── dealNumber   # Auto-increment, displayed as D-XXXXX
+├── retailPrice  # Original retail price
+├── payout       # What vendor gets paid
+├── limitPerVendor
+├── freeLabelMin # Min qty for free label
+└── deadline
 
-### 3. Set Up Environment Variables
+Commitment       # Vendor commitments to deals
+├── commitmentNumber  # Auto-increment, displayed as C-XXXXX
+├── quantity
+├── deliveryMethod    # SHIP | DROP_OFF
+├── warehouse         # MA | NJ | CT | NY | DE
+└── status           # PENDING | IN_TRANSIT | DELIVERED | FULFILLED | CANCELLED
 
-Create a `.env` file in the project root:
+LabelRequest     # Label requests for commitments
+├── status       # PENDING | APPROVED | REJECTED
+└── labelFiles   # JSON array of uploaded file URLs
+
+Tracking         # Shipment tracking
+├── carrier      # FEDEX | UPS | USPS
+├── trackingNumber
+└── lastStatus
+
+Invoice          # Payout invoices
+├── skynovaUrl   # Link to Skynova invoice
+├── amount
+└── status       # PENDING | PAID
+
+Warehouse        # Warehouse configurations
+├── code         # MA, NJ, CT, NY, DE
+├── canDropOff   # Boolean
+└── canShip      # Boolean
+```
+
+---
+
+## 🚀 Deployment
+
+### Prerequisites
+- Node.js 20+
+- Supabase project (free tier works)
+- Railway account (or similar)
+
+### Environment Variables
 
 ```env
 # Supabase
-NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
-# Database (from Supabase Settings → Database → Connection string)
-DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres?pgbouncer=true"
-DIRECT_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres"
+# Database (use Session Pooler for serverless)
+DATABASE_URL=postgresql://postgres.xxx:password@aws-x-region.pooler.supabase.com:5432/postgres
+DIRECT_URL=postgresql://postgres:password@db.xxx.supabase.co:5432/postgres
 ```
 
-### 4. Install & Set Up
+### Deploy to Railway
+
+1. Push to GitHub
+2. Connect repo to Railway
+3. Add environment variables
+4. Railway auto-deploys
+
+### Post-Deploy: Supabase Settings
+
+1. **Authentication → URL Configuration**
+   - Site URL: `https://your-app.up.railway.app`
+   - Redirect URLs: `https://your-app.up.railway.app/**`
+
+---
+
+## 🛠️ Local Development
 
 ```bash
 # Install dependencies
@@ -63,122 +213,100 @@ npm install
 # Generate Prisma client
 npm run db:generate
 
-# Push schema to Supabase database
+# Push schema to database
 npm run db:push
-```
 
-### 5. Create Your Admin Account
-
-1. Go to your Supabase dashboard → **Authentication** → **Users**
-2. Click **Add user** → **Create new user**
-3. Enter your admin email and password
-4. Copy the user's **UID**
-
-5. Go to **Table Editor** → **Profile** table
-6. Click **Insert row** and add:
-   - `authId`: paste the UID from step 4
-   - `email`: your admin email
-   - `firstName`: Admin
-   - `lastName`: User
-   - `role`: ADMIN
-
-### 6. Start the App
-
-```bash
+# Run development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and log in with your admin account!
-
----
-
-## Creating Additional Users
-
-### Via Supabase Dashboard (Recommended for Admins)
-1. **Authentication** → **Users** → **Add user**
-2. Create Profile row in **Table Editor**
-
-### Via the App (Coming Soon)
-Admin user creation will be added to the admin dashboard.
-
----
-
-## Project Structure
-
-```
-queens-buying-group/
-├── prisma/
-│   └── schema.prisma      # Database schema
-├── src/
-│   ├── app/
-│   │   ├── (auth)/        # Login, forgot-password, reset-password
-│   │   ├── (dashboard)/   # Seller dashboard
-│   │   ├── (admin)/       # Admin dashboard
-│   │   ├── api/           # API routes
-│   │   └── page.tsx       # Landing page
-│   ├── components/        # Reusable UI components
-│   ├── lib/
-│   │   ├── supabase/      # Supabase client utilities
-│   │   ├── auth.ts        # Auth helpers
-│   │   ├── db.ts          # Prisma client
-│   │   └── utils.ts       # Helper functions
-│   └── middleware.ts      # Auth middleware
-└── README.md
-```
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 14 (App Router) |
-| Styling | Tailwind CSS |
-| Auth | Supabase Auth |
-| Database | Supabase PostgreSQL |
-| ORM | Prisma |
-| Deployment | Vercel (recommended) |
-
-## Deployment
-
-### Vercel
-
-1. Push code to GitHub
-2. Import project in [Vercel](https://vercel.com)
-3. Add environment variables
-4. Deploy!
-
-### Environment Variables for Production
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=your-production-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-production-key
-DATABASE_URL=your-production-db-url
-DIRECT_URL=your-production-direct-url
-```
-
-## Commands
+### Scripts
 
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
+npm run dev          # Start dev server
+npm run build        # Production build
 npm run start        # Start production server
 npm run db:generate  # Generate Prisma client
-npm run db:push      # Push schema to database
+npm run db:push      # Push schema to DB
 npm run db:studio    # Open Prisma Studio
+npm run create-admin # Create admin user (CLI)
 ```
-
-## Roadmap
-
-- [x] Core authentication with Supabase
-- [x] Seller dashboard
-- [x] Admin dashboard
-- [x] Deal management
-- [x] Commitments & tracking
-- [x] Label requests
-- [ ] Admin user creation UI
-- [ ] Email notifications
-- [ ] File uploads for images
-- [ ] Analytics dashboard
 
 ---
 
-Built with ❤️ by Cash Out Queens
+## 📁 Project Structure
+
+```
+src/
+├── app/
+│   ├── (auth)/           # Login, forgot-password, reset-password
+│   ├── (dashboard)/      # Seller dashboard pages
+│   ├── (admin)/          # Admin dashboard pages
+│   ├── api/              # API routes
+│   │   ├── deals/
+│   │   ├── commitments/
+│   │   ├── labels/
+│   │   ├── tracking/
+│   │   ├── invoices/
+│   │   ├── warehouses/
+│   │   ├── admin/        # Admin-only endpoints
+│   │   └── files/        # Secure file proxy
+│   └── auth/             # Auth callbacks
+├── components/
+│   └── ui/               # Reusable UI components
+├── lib/
+│   ├── supabase/         # Supabase client config
+│   ├── api-utils.ts      # Auth helpers, response helpers
+│   ├── db.ts             # Prisma client
+│   └── validations.ts    # Zod schemas
+└── middleware.ts         # Session refresh, route protection
+```
+
+---
+
+## 🔒 Security
+
+- **Authentication**: Supabase Auth with JWT tokens
+- **Authorization**: Role-based access control in API routes
+- **Database**: Row-level security via application layer
+- **File Storage**: Private Supabase bucket with signed URLs
+- **API Protection**: All endpoints check authentication
+- **CORS**: Handled by Next.js
+
+---
+
+## 📱 Mobile Responsive
+
+- Hamburger menu on mobile
+- Touch-friendly UI elements
+- Responsive tables and cards
+- Mobile-optimized forms
+
+---
+
+## 🎨 Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS |
+| UI Components | Radix UI + custom |
+| Database | PostgreSQL (Supabase) |
+| ORM | Prisma |
+| Auth | Supabase Auth |
+| Storage | Supabase Storage |
+| Hosting | Railway |
+| Icons | Lucide React |
+
+---
+
+## 📄 License
+
+Private - Queens Buying Group
+
+---
+
+## 🤝 Support
+
+For issues or feature requests, contact the development team.

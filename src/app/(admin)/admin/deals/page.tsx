@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Edit, Trash2, Search, X, AlertTriangle } from "lucide-react";
+import { Plus, Edit, Trash2, Search, X, AlertTriangle, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type DealStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "EXPIRED" | "CLOSED";
@@ -215,6 +215,24 @@ export default function AdminDealsPage() {
             className="bg-white rounded-xl border border-slate-200 p-4 lg:p-5 hover:shadow-md transition-shadow"
           >
             <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+              {/* Product Image */}
+              <div className="w-16 h-16 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 hidden sm:block">
+                {deal.imageUrl ? (
+                  <img
+                    src={deal.imageUrl}
+                    alt={deal.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Package className="w-6 h-6 text-slate-300" />
+                  </div>
+                )}
+              </div>
+
               {/* Deal Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">

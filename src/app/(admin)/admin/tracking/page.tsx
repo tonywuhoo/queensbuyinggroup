@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Search, Package, Filter, ExternalLink, CheckCircle, XCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Package, Filter, ExternalLink, CheckCircle, XCircle, Truck, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,15 +11,8 @@ const WAREHOUSES = [
   { id: "MA", label: "MA" },
   { id: "NJ", label: "NJ" },
   { id: "CT", label: "CT" },
+  { id: "NY", label: "NY" },
   { id: "DE", label: "DE" },
-];
-
-// Mock tracking data
-const mockTrackings = [
-  { id: "1", user: "John Doe", vendorId: "U-00001", trackingId: "492732392120", carrier: "FedEx", status: "DELIVERED", warehouse: "DE", dealTitle: "iPhone 15 Pro Max", quantity: 5, submittedAt: "Dec 24, 2025" },
-  { id: "2", user: "Jane Smith", vendorId: "U-00002", trackingId: "492732393929", carrier: "FedEx", status: "DELIVERED", warehouse: "MA", dealTitle: "AirPods Pro 2", quantity: 10, submittedAt: "Dec 22, 2025" },
-  { id: "3", user: "Mike Johnson", vendorId: "U-00004", trackingId: "492732392153", carrier: "USPS", status: "IN_TRANSIT", warehouse: "NJ", dealTitle: "MacBook Air M3", quantity: 2, submittedAt: "Dec 22, 2025" },
-  { id: "4", user: "John Doe", vendorId: "U-00001", trackingId: "492732399999", carrier: "UPS", status: "PENDING", warehouse: "CT", dealTitle: "iPad Pro 12.9", quantity: 3, submittedAt: "Dec 21, 2025" },
 ];
 
 const statusConfig: Record<string, { label: string; color: string }> = {
@@ -27,44 +20,140 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   IN_TRANSIT: { label: "In Transit", color: "bg-blue-100 text-blue-700" },
   DELIVERED: { label: "Delivered", color: "bg-emerald-100 text-emerald-700" },
   FULFILLED: { label: "Fulfilled", color: "bg-purple-100 text-purple-700" },
-  REJECTED: { label: "Rejected", color: "bg-red-100 text-red-700" },
+  CANCELLED: { label: "Cancelled", color: "bg-red-100 text-red-700" },
 };
 
 const carrierUrls: Record<string, string> = {
-  FedEx: "https://www.fedex.com/fedextrack/?trknbr=",
+  FEDEX: "https://www.fedex.com/fedextrack/?trknbr=",
   UPS: "https://www.ups.com/track?tracknum=",
   USPS: "https://tools.usps.com/go/TrackConfirmAction?tLabels=",
-  DHL: "https://www.dhl.com/en/express/tracking.html?AWB=",
 };
 
+interface TrackingData {
+  id: string;
+  trackingNumber: string;
+  carrier: string;
+  lastStatus?: string;
+  lastLocation?: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    vendorId: string;
+  };
+  commitment: {
+    id: string;
+    quantity: number;
+    warehouse: string;
+    status: string;
+    deal: {
+      id: string;
+      title: string;
+      dealId: string;
+      payout: number;
+    };
+  };
+}
+
 export default function AdminTrackingPage() {
+  const [trackings, setTrackings] = useState<TrackingData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeWarehouse, setActiveWarehouse] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
-  const filteredTrackings = mockTrackings.filter((t) => {
-    const matchesWarehouse = activeWarehouse === "ALL" || t.warehouse === activeWarehouse;
-    const matchesStatus = statusFilter === "ALL" || t.status === statusFilter;
-    const matchesSearch = 
-      t.trackingId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.vendorId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.dealTitle.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesWarehouse && matchesStatus && matchesSearch;
-  });
+  const fetchTrackings = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams();
+      if (activeWarehouse !== "ALL") params.set("warehouse", activeWarehouse);
+      if (statusFilter !== "ALL") params.set("status", statusFilter);
+      if (searchQuery) params.set("search", searchQuery);
 
-  const getTrackingUrl = (carrier: string, trackingId: string) => {
-    const baseUrl = carrierUrls[carrier];
-    return baseUrl ? `${baseUrl}${trackingId}` : null;
+      const res = await fetch(`/api/admin/tracking?${params}`, {
+        credentials: "include"
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTrackings(data);
+      } else {
+        setError("Failed to fetch tracking data");
+      }
+    } catch (e) {
+      console.error("Error fetching trackings:", e);
+      setError("Error loading tracking data");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchTrackings();
+  }, [activeWarehouse, statusFilter]);
+
+  // Debounce search
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      fetchTrackings();
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  const handleStatusUpdate = async (trackingId: string, newStatus: "DELIVERED" | "FULFILLED" | "CANCELLED") => {
+    setUpdatingId(trackingId);
+    try {
+      const res = await fetch("/api/admin/tracking", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          trackingId,
+          commitmentStatus: newStatus,
+        }),
+      });
+
+      if (res.ok) {
+        fetchTrackings();
+      } else {
+        setError("Failed to update status");
+      }
+    } catch (e) {
+      setError("Error updating status");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const getTrackingUrl = (carrier: string, trackingNumber: string) => {
+    const baseUrl = carrierUrls[carrier];
+    return baseUrl ? `${baseUrl}${trackingNumber}` : null;
+  };
+
+  const filteredTrackings = trackings;
 
   return (
     <div className="p-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900">All Tracking</h1>
-        <p className="text-slate-500 mt-1">View and manage all submitted tracking numbers</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">All Tracking</h1>
+          <p className="text-slate-500 mt-1">View and manage all submitted tracking numbers</p>
+        </div>
+        <Button variant="outline" onClick={fetchTrackings} disabled={loading}>
+          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
       </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+          {error}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="space-y-4 mb-6">
@@ -73,7 +162,7 @@ export default function AdminTrackingPage() {
           <div className="flex items-center gap-3">
             <Package className="w-5 h-5 text-slate-400" />
             <span className="text-sm font-medium text-slate-600">Warehouse:</span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {WAREHOUSES.map((wh) => (
                 <button
                   key={wh.id}
@@ -98,7 +187,7 @@ export default function AdminTrackingPage() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <Input
                 type="text"
-                placeholder="Search tracking ID, user, or deal..."
+                placeholder="Search tracking #, vendor, or deal..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-11 border-0 bg-transparent focus-visible:ring-0 h-12"
@@ -106,9 +195,9 @@ export default function AdminTrackingPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 p-2">
+          <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 p-2 flex-wrap">
             <Filter className="w-5 h-5 text-slate-400 ml-2" />
-            {["ALL", "PENDING", "IN_TRANSIT", "DELIVERED", "FULFILLED"].map((status) => (
+            {["ALL", "IN_TRANSIT", "DELIVERED", "FULFILLED"].map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
@@ -133,77 +222,136 @@ export default function AdminTrackingPage() {
           </h2>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">User</th>
-                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Tracking ID</th>
-                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Deal</th>
-                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Carrier</th>
-                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Warehouse</th>
-                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Qty</th>
-                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Status</th>
-                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredTrackings.map((tracking) => {
-                const status = statusConfig[tracking.status] || statusConfig.PENDING;
-                const trackUrl = getTrackingUrl(tracking.carrier, tracking.trackingId);
-                return (
-                  <tr key={tracking.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-medium text-slate-900">{tracking.user}</p>
-                        <p className="text-sm text-slate-500 font-mono">{tracking.vendorId}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="font-mono text-sm text-slate-900">{tracking.trackingId}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-slate-700">{tracking.dealTitle}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-slate-600">{tracking.carrier}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-slate-900">{tracking.warehouse}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-slate-900">{tracking.quantity}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge className={status.color}>{status.label}</Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {trackUrl && (
-                          <a href={trackUrl} target="_blank" rel="noopener noreferrer">
-                            <Button variant="ghost" size="sm">
-                              <ExternalLink className="w-4 h-4" />
-                            </Button>
-                          </a>
-                        )}
-                        {tracking.status !== "FULFILLED" && tracking.status !== "REJECTED" && (
-                          <>
-                            <Button variant="ghost" size="sm" className="text-emerald-600 hover:bg-emerald-50" title="Mark as Fulfilled">
+        {loading ? (
+          <div className="p-12 flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin" />
+          </div>
+        ) : filteredTrackings.length === 0 ? (
+          <div className="p-12 text-center">
+            <Truck className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+            <p className="text-slate-500">No tracking records found</p>
+            <p className="text-sm text-slate-400 mt-1">Tracking will appear here when vendors submit shipments</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Vendor</th>
+                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Tracking #</th>
+                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Deal</th>
+                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Carrier</th>
+                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Warehouse</th>
+                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Qty</th>
+                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Status</th>
+                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Submitted</th>
+                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredTrackings.map((tracking) => {
+                  const status = statusConfig[tracking.commitment.status] || statusConfig.PENDING;
+                  const trackUrl = getTrackingUrl(tracking.carrier, tracking.trackingNumber);
+                  const isUpdating = updatingId === tracking.id;
+                  return (
+                    <tr key={tracking.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="font-medium text-slate-900">{tracking.user.name}</p>
+                          <p className="text-sm text-slate-500 font-mono">{tracking.user.vendorId}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div>
+                          <span className="font-mono text-sm text-slate-900">{tracking.trackingNumber}</span>
+                          {tracking.lastStatus && (
+                            <p className="text-xs text-slate-500 mt-1">{tracking.lastStatus}</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div>
+                          <span className="text-sm text-slate-700">{tracking.commitment.deal.title}</span>
+                          <p className="text-xs text-slate-500 font-mono">{tracking.commitment.deal.dealId}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          tracking.carrier === "FEDEX" ? "bg-purple-100 text-purple-700" :
+                          tracking.carrier === "UPS" ? "bg-amber-100 text-amber-700" :
+                          "bg-blue-100 text-blue-700"
+                        }`}>
+                          {tracking.carrier}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-medium text-slate-900">{tracking.commitment.warehouse}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-medium text-slate-900">{tracking.commitment.quantity}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge className={status.color}>{status.label}</Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-slate-500">
+                          {new Date(tracking.createdAt).toLocaleDateString()}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1">
+                          {trackUrl && (
+                            <a href={trackUrl} target="_blank" rel="noopener noreferrer">
+                              <Button variant="ghost" size="sm" title="Track Package">
+                                <ExternalLink className="w-4 h-4" />
+                              </Button>
+                            </a>
+                          )}
+                          {tracking.commitment.status === "IN_TRANSIT" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-emerald-600 hover:bg-emerald-50"
+                              title="Mark as Delivered"
+                              onClick={() => handleStatusUpdate(tracking.id, "DELIVERED")}
+                              disabled={isUpdating}
+                            >
                               <CheckCircle className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50" title="Reject">
+                          )}
+                          {tracking.commitment.status === "DELIVERED" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-purple-600 hover:bg-purple-50"
+                              title="Mark as Fulfilled"
+                              onClick={() => handleStatusUpdate(tracking.id, "FULFILLED")}
+                              disabled={isUpdating}
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {tracking.commitment.status !== "FULFILLED" && tracking.commitment.status !== "CANCELLED" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:bg-red-50"
+                              title="Cancel"
+                              onClick={() => handleStatusUpdate(tracking.id, "CANCELLED")}
+                              disabled={isUpdating}
+                            >
                               <XCircle className="w-4 h-4" />
                             </Button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
