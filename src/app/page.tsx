@@ -56,7 +56,7 @@ export default async function HomePage({
         <Logo size="md" className="[&_span]:text-white" />
         <div className="flex items-center gap-4">
           <a
-            href="https://discord.gg/SdECS6wxka"
+            href="https://discord.gg/dmeExCWxj"
             target="_blank"
             rel="noopener noreferrer"
             className="hidden sm:flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors"
