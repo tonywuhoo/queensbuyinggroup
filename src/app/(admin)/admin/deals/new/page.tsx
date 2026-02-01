@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, DollarSign, Package, Clock, Tag, ImageIcon } from "lucide-react";
+import { ArrowLeft, DollarSign, Package, Clock, Tag, ImageIcon, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,8 @@ export default function NewDealPage() {
     freeLabelMin: "",
     deadline: "",
     status: "DRAFT",
+    isExclusive: false,
+    exclusivePrice: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,6 +47,8 @@ export default function NewDealPage() {
           freeLabelMin: formData.freeLabelMin ? parseInt(formData.freeLabelMin) : null,
           deadline: formData.deadline || null,
           status: formData.status,
+          isExclusive: formData.isExclusive,
+          exclusivePrice: formData.exclusivePrice ? parseFloat(formData.exclusivePrice) : null,
         })
       });
 
@@ -216,6 +220,58 @@ export default function NewDealPage() {
               </p>
             </div>
           )}
+        </div>
+
+        {/* Exclusive Pricing */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <Star className="w-4 h-4 text-amber-500" />
+            Exclusive Pricing
+          </h2>
+          
+          <div className="space-y-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isExclusive}
+                onChange={(e) => setFormData({ ...formData, isExclusive: e.target.checked })}
+                className="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+              />
+              <div>
+                <span className="font-medium text-slate-900">Enable Exclusive Pricing</span>
+                <p className="text-xs text-slate-500">Show special price to Discord partner members</p>
+              </div>
+            </label>
+
+            {formData.isExclusive && (
+              <div className="pl-8 border-l-2 border-amber-200">
+                <Label htmlFor="exclusivePrice">Exclusive Payout ($)</Label>
+                <Input
+                  id="exclusivePrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.exclusivePrice}
+                  onChange={(e) => setFormData({ ...formData, exclusivePrice: e.target.value })}
+                  placeholder="Higher payout for Discord members"
+                  className="mt-1"
+                />
+                <p className="text-xs text-slate-500 mt-1">This price is shown only to verified Discord members</p>
+                
+                {formData.exclusivePrice && parseFloat(formData.exclusivePrice) > 0 && retailNum > 0 && (
+                  <div className="mt-3 p-3 bg-amber-50 rounded-lg">
+                    <p className="text-sm">
+                      <span className="text-slate-600">Exclusive Profit: </span>
+                      <span className="font-bold text-amber-600">
+                        ${(parseFloat(formData.exclusivePrice) - retailNum).toFixed(2)} 
+                        ({((parseFloat(formData.exclusivePrice) - retailNum) / retailNum * 100).toFixed(1)}%)
+                      </span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Limits & Labels */}

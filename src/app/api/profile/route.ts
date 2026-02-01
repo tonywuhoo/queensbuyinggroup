@@ -26,6 +26,12 @@ export async function GET() {
       vendorId,
       vendorNumber: profile.vendorNumber,
       createdAt: profile.createdAt,
+      // Discord integration
+      discordId: profile.discordId,
+      discordUsername: profile.discordUsername,
+      discordAvatar: profile.discordAvatar,
+      isExclusiveMember: profile.isExclusiveMember,
+      exclusiveMemberCheckedAt: profile.exclusiveMemberCheckedAt,
     });
   } catch (e: any) {
     console.error("GET /api/profile error:", e);

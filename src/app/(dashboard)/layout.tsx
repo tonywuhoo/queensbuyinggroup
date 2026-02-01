@@ -11,6 +11,10 @@ interface UserProfile {
   email: string;
   vendorId: string;
   role: string;
+  discordId?: string;
+  discordUsername?: string;
+  isExclusiveMember?: boolean;
+  exclusiveMemberCheckedAt?: string;
 }
 
 export default function DashboardLayout({
@@ -51,7 +55,30 @@ export default function DashboardLayout({
             email: data.email || user.email || "",
             vendorId: data.vendorId || "U-00000",
             role: data.role || "SELLER",
+            discordId: data.discordId,
+            discordUsername: data.discordUsername,
+            isExclusiveMember: data.isExclusiveMember,
+            exclusiveMemberCheckedAt: data.exclusiveMemberCheckedAt,
           });
+          
+          // Auto-refresh Discord membership if > 24 hours old
+          if (data.discordId && data.exclusiveMemberCheckedAt) {
+            const lastChecked = new Date(data.exclusiveMemberCheckedAt);
+            const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+            
+            if (lastChecked < dayAgo) {
+              // Refresh in background
+              fetch('/api/profile/discord/refresh', { method: 'POST' })
+                .then(res => res.json())
+                .then(refreshData => {
+                  if (refreshData.isExclusiveMember !== data.isExclusiveMember) {
+                    // Update profile if status changed
+                    setProfile(prev => prev ? { ...prev, isExclusiveMember: refreshData.isExclusiveMember } : null);
+                  }
+                })
+                .catch(e => console.error('Error refreshing Discord status:', e));
+            }
+          }
         } else {
           // Fallback to metadata if profile fetch fails
           const meta = user.user_metadata;
@@ -65,6 +92,8 @@ export default function DashboardLayout({
             email: user.email || "",
             vendorId: meta?.vendor_id || "U-00000",
             role: meta?.role || "SELLER",
+            discordUsername: undefined,
+            isExclusiveMember: false,
           });
         }
       } catch (e) {
@@ -77,6 +106,8 @@ export default function DashboardLayout({
           email: user.email || "",
           vendorId: meta?.vendor_id || "U-00000",
           role: meta?.role || "SELLER",
+          discordUsername: undefined,
+          isExclusiveMember: false,
         });
       }
       
@@ -114,6 +145,8 @@ export default function DashboardLayout({
           lastName: profile.lastName,
           email: profile.email,
           vendorId: profile.vendorId,
+          discordUsername: profile.discordUsername,
+          isExclusiveMember: profile.isExclusiveMember,
         }}
       />
       <main className="pt-14 lg:pt-0 lg:pl-64">

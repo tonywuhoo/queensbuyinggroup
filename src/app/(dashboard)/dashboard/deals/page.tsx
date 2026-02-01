@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Tag, Clock, DollarSign, TrendingUp, Package, Filter, Search } from "lucide-react";
+import { Tag, Clock, DollarSign, TrendingUp, Package, Filter, Search, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type DealType = "ALL" | "ABOVE_RETAIL" | "RETAIL" | "BELOW_COST";
@@ -22,6 +22,8 @@ interface Deal {
   freeLabelMin?: number;
   status: string;
   deadline?: string;
+  isExclusive?: boolean;
+  exclusivePrice?: number;
 }
 
 export default function DealsPage() {
@@ -30,23 +32,34 @@ export default function DealsPage() {
   const [typeFilter, setTypeFilter] = useState<DealType>("ALL");
   const [statusFilter, setStatusFilter] = useState<DealStatus>("ACTIVE");
   const [search, setSearch] = useState("");
+  const [isExclusiveMember, setIsExclusiveMember] = useState(false);
 
   useEffect(() => {
-    const fetchDeals = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch('/api/deals?includeExpired=true');
-        if (res.ok) {
-          const data = await res.json();
-          setDeals(data);
+        // Fetch deals and profile in parallel
+        const [dealsRes, profileRes] = await Promise.all([
+          fetch('/api/deals?includeExpired=true'),
+          fetch('/api/profile')
+        ]);
+        
+        if (dealsRes.ok) {
+          const dealsData = await dealsRes.json();
+          setDeals(dealsData);
+        }
+        
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          setIsExclusiveMember(profileData.isExclusiveMember || false);
         }
       } catch (e) {
-        console.error('Error fetching deals:', e);
+        console.error('Error fetching data:', e);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchDeals();
+    fetchData();
   }, []);
 
   const filteredDeals = deals.filter((deal) => {
@@ -143,7 +156,11 @@ export default function DealsPage() {
       {filteredDeals.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2">
           {filteredDeals.map((deal) => {
-            const profit = Number(deal.payout) - Number(deal.retailPrice);
+            // Determine which payout to show based on exclusive membership
+            const showExclusivePrice = deal.isExclusive && deal.exclusivePrice && isExclusiveMember;
+            const displayPayout = showExclusivePrice ? Number(deal.exclusivePrice) : Number(deal.payout);
+            
+            const profit = displayPayout - Number(deal.retailPrice);
             const profitPercent = ((profit / Number(deal.retailPrice)) * 100).toFixed(1);
             const isExpired = deal.status === 'EXPIRED' || (deal.deadline && new Date(deal.deadline) < new Date());
 
@@ -199,9 +216,14 @@ export default function DealsPage() {
                     <p className="text-lg font-bold text-slate-900">${Number(deal.retailPrice).toFixed(0)}</p>
                     <p className="text-xs text-slate-500">Retail</p>
                   </div>
-                  <div className="bg-green-50 rounded-lg p-3 text-center">
-                    <p className="text-lg font-bold text-green-600">${Number(deal.payout).toFixed(0)}</p>
-                    <p className="text-xs text-slate-500">Payout</p>
+                  <div className={`rounded-lg p-3 text-center ${showExclusivePrice ? 'bg-amber-50 ring-2 ring-amber-200' : 'bg-green-50'}`}>
+                    <p className={`text-lg font-bold ${showExclusivePrice ? 'text-amber-600' : 'text-green-600'}`}>
+                      ${displayPayout.toFixed(0)}
+                    </p>
+                    <p className="text-xs text-slate-500 flex items-center justify-center gap-1">
+                      {showExclusivePrice && <Star className="w-3 h-3 text-amber-500" />}
+                      {showExclusivePrice ? 'VIP Payout' : 'Payout'}
+                    </p>
                   </div>
                   <div className={`rounded-lg p-3 text-center ${profit >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
                     <p className={`text-lg font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -210,6 +232,14 @@ export default function DealsPage() {
                     <p className="text-xs text-slate-500">Profit</p>
                   </div>
                 </div>
+                
+                {/* Exclusive deal indicator for non-members */}
+                {deal.isExclusive && !isExclusiveMember && (
+                  <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+                    <Star className="w-4 h-4 text-amber-500" />
+                    <span className="text-xs text-amber-700">Link Discord for exclusive pricing</span>
+                  </div>
+                )}
 
                 {/* Meta Info */}
                 <div className="flex items-center justify-between text-sm">

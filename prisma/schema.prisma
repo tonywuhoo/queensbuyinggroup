@@ -83,6 +83,13 @@ model Profile {
   // Vendor ID: Auto-incrementing number, displayed as U-XXXXX
   vendorNumber  Int      @unique @default(autoincrement())
   
+  // Discord integration (for exclusive deals)
+  discordId               String?   @unique
+  discordUsername         String?
+  discordAvatar           String?
+  isExclusiveMember       Boolean   @default(false)
+  exclusiveMemberCheckedAt DateTime?
+  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
@@ -113,6 +120,10 @@ model Deal {
   retailPrice     Decimal       @db.Decimal(10, 2)
   payout          Decimal       @db.Decimal(10, 2)
   priceType       DealPriceType @default(BELOW_COST)
+  
+  // Exclusive deal pricing (for partnered Discord members)
+  isExclusive     Boolean       @default(false)
+  exclusivePrice  Decimal?      @db.Decimal(10, 2)
   
   // Limits
   maxQuantity     Int?          // Total max

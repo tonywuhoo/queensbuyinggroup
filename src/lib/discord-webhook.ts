@@ -79,6 +79,8 @@ export function formatDealForDiscord(
     payout: any; // Prisma Decimal or number
     priceType: string;
     dealNumber: number;
+    isExclusive?: boolean;
+    exclusivePrice?: any; // Prisma Decimal or number
   },
   dealId: string
 ): DealWebhookPayload {
@@ -97,20 +99,19 @@ export function formatDealForDiscord(
   }
 
   // Determine exclusive vs regular price
-  let exclusivePrice: string | undefined;
-  let price: string | undefined;
+  let exclusivePriceStr: string | undefined;
+  const price = `$${payout.toFixed(2)}`;
 
-  if (deal.priceType === 'ABOVE_RETAIL') {
-    exclusivePrice = `$${payout.toFixed(2)}`;
-    price = `$${retailPrice.toFixed(2)}`;
-  } else {
-    price = `$${payout.toFixed(2)}`;
+  // If deal has exclusive pricing, include it
+  if (deal.isExclusive && deal.exclusivePrice) {
+    const exclusiveNum = typeof deal.exclusivePrice === 'number' ? deal.exclusivePrice : Number(deal.exclusivePrice);
+    exclusivePriceStr = `$${exclusiveNum.toFixed(2)}`;
   }
 
   return {
     item: deal.title,
     price,
-    exclusive_price: exclusivePrice,
+    exclusive_price: exclusivePriceStr,
     original_price: `$${retailPrice.toFixed(2)}`,
     discount,
     url: dealUrl,

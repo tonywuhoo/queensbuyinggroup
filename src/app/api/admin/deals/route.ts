@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log("Creating deal with data:", body);
 
-    const { title, description, imageUrl, retailPrice, payout, limitPerVendor, freeLabelMin, deadline, status } = body;
+    const { title, description, imageUrl, retailPrice, payout, limitPerVendor, freeLabelMin, deadline, status, isExclusive, exclusivePrice } = body;
 
     if (!title || retailPrice === undefined || payout === undefined) {
       return errorResponse("Missing required fields: title, retailPrice, payout");
@@ -92,6 +92,8 @@ export async function POST(request: NextRequest) {
         deadline: deadline ? new Date(deadline) : null,
         status: status || "DRAFT",
         createdById: profile.id,
+        isExclusive: isExclusive || false,
+        exclusivePrice: exclusivePrice ? Number(exclusivePrice) : null,
       }
     });
 
@@ -128,7 +130,7 @@ export async function PUT(request: NextRequest) {
     if (error) return errorResponse(error, 403);
 
     const body = await request.json();
-    const { id, ...updateData } = body;
+    const { id, isExclusive, exclusivePrice, ...updateData } = body;
 
     if (!id) {
       return errorResponse("Deal ID required");
@@ -157,7 +159,11 @@ export async function PUT(request: NextRequest) {
 
     const deal = await db.deal.update({
       where: { id },
-      data: updateData,
+      data: {
+        ...updateData,
+        isExclusive: isExclusive ?? currentDeal.isExclusive,
+        exclusivePrice: exclusivePrice !== undefined ? (exclusivePrice ? Number(exclusivePrice) : null) : currentDeal.exclusivePrice,
+      },
     });
 
     const dealId = `D-${String(deal.dealNumber).padStart(5, "0")}`;

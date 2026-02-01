@@ -28,6 +28,8 @@ export async function GET(
         status: true,
         deadline: true,
         createdAt: true,
+        isExclusive: true,
+        exclusivePrice: true,
       }
     });
 

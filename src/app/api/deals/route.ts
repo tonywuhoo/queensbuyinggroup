@@ -48,6 +48,8 @@ export async function GET(request: NextRequest) {
         status: true,
         deadline: true,
         createdAt: true,
+        isExclusive: true,
+        exclusivePrice: true,
         _count: {
           select: { commitments: true }
         }
