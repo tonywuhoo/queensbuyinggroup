@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { User, Lock, Save, AlertCircle, MessageCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,12 +25,37 @@ interface UserProfile {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    // Handle Discord OAuth result from URL params
+    const discordResult = searchParams.get("discord");
+    const discordError = searchParams.get("error");
+    
+    if (discordResult === "linked") {
+      toast({
+        title: "Discord Linked!",
+        description: "Your Discord account has been connected successfully.",
+      });
+      // Clean URL
+      router.replace("/dashboard/settings");
+    } else if (discordError) {
+      toast({
+        title: "Discord Link Failed",
+        description: discordError === "discord_denied" 
+          ? "You cancelled the Discord authorization."
+          : "Failed to link Discord account. Please try again.",
+        variant: "destructive",
+      });
+      router.replace("/dashboard/settings");
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -158,33 +183,8 @@ export default function SettingsPage() {
 
   async function handleLinkDiscord() {
     setIsDiscordLoading(true);
-    
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.linkIdentity({
-        provider: 'discord',
-        options: {
-          scopes: 'identify guilds',
-          redirectTo: `${window.location.origin}/api/auth/callback?next=/dashboard/settings`,
-        }
-      });
-      
-      if (error) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to link Discord",
-          variant: "destructive",
-        });
-      }
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to connect to Discord",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDiscordLoading(false);
-    }
+    // Redirect to our custom Discord OAuth endpoint
+    window.location.href = '/api/auth/discord';
   }
 
   async function handleUnlinkDiscord() {
