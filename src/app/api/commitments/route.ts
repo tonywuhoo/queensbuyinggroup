@@ -85,18 +85,14 @@ export async function POST(request: NextRequest) {
       where: { dealId, userId: profile!.id, status: { not: "CANCELLED" } }
     });
 
-    // Calculate quantities
+    // Calculate quantities across all commitments (fulfilled + active)
     const fulfilledQty = existingCommitments
       .filter(c => c.status === "FULFILLED")
       .reduce((sum, c) => sum + c.quantity, 0);
-    const activeCommitments = existingCommitments.filter(c => c.status !== "FULFILLED");
-    const activeQty = activeCommitments.reduce((sum, c) => sum + c.quantity, 0);
+    const activeQty = existingCommitments
+      .filter(c => c.status !== "FULFILLED")
+      .reduce((sum, c) => sum + c.quantity, 0);
     const totalCommitted = fulfilledQty + activeQty;
-
-    // Check if user already has an active commitment in progress
-    if (activeCommitments.length > 0) {
-      return errorResponse("You already have an active commitment for this deal. Check My Commitments.");
-    }
 
     // Check vendor limit
     const limit = deal.limitPerVendor || 999; // Default high limit if no limit set
@@ -168,9 +164,10 @@ export async function PUT(request: NextRequest) {
       return errorResponse("Commitment ID required");
     }
 
-    // Check commitment belongs to user
+    // Check commitment belongs to user and include deal info
     const commitment = await db.commitment.findFirst({
-      where: { id, userId: profile!.id }
+      where: { id, userId: profile!.id },
+      include: { deal: true }
     });
 
     if (!commitment) {
@@ -193,7 +190,31 @@ export async function PUT(request: NextRequest) {
       }
     }
     if (warehouse) updateData.warehouse = warehouse;
-    if (quantity) updateData.quantity = quantity;
+    
+    // Validate quantity change against vendor limit
+    if (quantity && quantity !== commitment.quantity) {
+      const limit = commitment.deal.limitPerVendor || 999;
+      
+      // Get all other commitments for this deal (excluding current one)
+      const otherCommitments = await db.commitment.findMany({
+        where: { 
+          dealId: commitment.dealId, 
+          userId: profile!.id, 
+          status: { not: "CANCELLED" },
+          id: { not: id }
+        }
+      });
+      
+      const otherQty = otherCommitments.reduce((sum, c) => sum + c.quantity, 0);
+      const newTotal = otherQty + quantity;
+      
+      if (newTotal > limit) {
+        const available = limit - otherQty;
+        return errorResponse(`Cannot update to ${quantity} units. You can only commit up to ${available} more units (limit: ${limit}/vendor)`);
+      }
+      
+      updateData.quantity = quantity;
+    }
 
     const updated = await db.commitment.update({
       where: { id },
