@@ -187,6 +187,11 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...
 # Database (use Session Pooler for serverless)
 DATABASE_URL=postgresql://postgres.xxx:password@aws-x-region.pooler.supabase.com:5432/postgres
 DIRECT_URL=postgresql://postgres:password@db.xxx.supabase.co:5432/postgres
+
+# Discord Webhook (optional - for deal notifications)
+DISCORD_WEBHOOK_URL=https://your-discord-bot.up.railway.app/webhook
+DISCORD_WEBHOOK_SECRET=your-webhook-secret-key
+NEXT_PUBLIC_WEBSITE_URL=https://cashoutqueens.com
 ```
 
 ### Deploy to Railway
