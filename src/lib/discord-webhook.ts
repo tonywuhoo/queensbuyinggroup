@@ -66,7 +66,7 @@ export async function notifyDiscordWebhook(payload: DealWebhookPayload): Promise
 /**
  * Format a deal object into a Discord webhook payload.
  *
- * @param deal Deal object from database
+ * @param deal Deal object from database (Prisma)
  * @param dealId Formatted deal ID (e.g., "D-00001")
  * @returns DealWebhookPayload
  */
@@ -75,8 +75,8 @@ export function formatDealForDiscord(
     title: string;
     description: string | null;
     imageUrl: string | null;
-    retailPrice: number;
-    payout: number;
+    retailPrice: any; // Prisma Decimal or number
+    payout: any; // Prisma Decimal or number
     priceType: string;
     dealNumber: number;
   },
@@ -85,10 +85,14 @@ export function formatDealForDiscord(
   const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://cashoutqueens.com';
   const dealUrl = `${websiteUrl}/dashboard/deals/${dealId}`;
 
+  // Convert Prisma Decimal to number if needed
+  const retailPrice = typeof deal.retailPrice === 'number' ? deal.retailPrice : Number(deal.retailPrice);
+  const payout = typeof deal.payout === 'number' ? deal.payout : Number(deal.payout);
+
   // Calculate discount percentage
   let discount: string | undefined;
-  if (deal.retailPrice > deal.payout) {
-    const discountPercent = Math.round(((deal.retailPrice - deal.payout) / deal.retailPrice) * 100);
+  if (retailPrice > payout) {
+    const discountPercent = Math.round(((retailPrice - payout) / retailPrice) * 100);
     discount = `${discountPercent}% off`;
   }
 
@@ -97,17 +101,17 @@ export function formatDealForDiscord(
   let price: string | undefined;
 
   if (deal.priceType === 'ABOVE_RETAIL') {
-    exclusivePrice = `$${deal.payout.toFixed(2)}`;
-    price = `$${deal.retailPrice.toFixed(2)}`;
+    exclusivePrice = `$${payout.toFixed(2)}`;
+    price = `$${retailPrice.toFixed(2)}`;
   } else {
-    price = `$${deal.payout.toFixed(2)}`;
+    price = `$${payout.toFixed(2)}`;
   }
 
   return {
     item: deal.title,
     price,
     exclusive_price: exclusivePrice,
-    original_price: `$${deal.retailPrice.toFixed(2)}`,
+    original_price: `$${retailPrice.toFixed(2)}`,
     discount,
     url: dealUrl,
     image_url: deal.imageUrl || undefined,
