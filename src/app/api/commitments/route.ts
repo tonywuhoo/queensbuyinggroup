@@ -75,6 +75,10 @@ export async function POST(request: NextRequest) {
     const deal = await db.deal.findUnique({ where: { id: dealId } });
     if (!deal) return errorResponse("Deal not found", 404);
     if (deal.status !== "ACTIVE") return errorResponse("Deal is not active");
+    
+    // Determine payout rate based on VIP status
+    const isVipPricing = profile!.isExclusiveMember && deal.isExclusive && deal.exclusivePrice;
+    const payoutRate = isVipPricing ? Number(deal.exclusivePrice) : Number(deal.payout);
 
     // Check for existing commitments (fulfilled or active)
     const existingCommitments = await db.commitment.findMany({
@@ -120,6 +124,8 @@ export async function POST(request: NextRequest) {
         warehouse: "TBD", // Will be set when user chooses delivery method
         deliveryMethod: "SHIP", // Default, will be updated
         status: "PENDING",
+        payoutRate,
+        isVipPricing: isVipPricing || false,
       },
       select: {
         id: true,

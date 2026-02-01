@@ -10,7 +10,8 @@ import {
   HelpCircle,
   ChevronRight,
   DollarSign,
-  Clock
+  Clock,
+  Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -21,6 +22,8 @@ interface Deal {
   payout: number;
   deadline?: string;
   status: string;
+  isExclusive?: boolean;
+  exclusivePrice?: number;
 }
 
 interface Commitment {
@@ -34,13 +37,15 @@ export default function SellerDashboard() {
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
+  const [isExclusiveMember, setIsExclusiveMember] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [dealsRes, commitmentsRes] = await Promise.all([
+        const [dealsRes, commitmentsRes, profileRes] = await Promise.all([
           fetch('/api/deals?status=ACTIVE'),
-          fetch('/api/commitments')
+          fetch('/api/commitments'),
+          fetch('/api/profile')
         ]);
         
         if (dealsRes.ok) {
@@ -51,6 +56,11 @@ export default function SellerDashboard() {
         if (commitmentsRes.ok) {
           const commitmentsData = await commitmentsRes.json();
           setCommitments(commitmentsData);
+        }
+        
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          setIsExclusiveMember(profileData.isExclusiveMember || false);
         }
       } catch (e) {
         console.error('Error fetching dashboard data:', e);
@@ -147,7 +157,10 @@ export default function SellerDashboard() {
         {deals.length > 0 ? (
           <div className="divide-y divide-slate-100">
             {deals.map((deal) => {
-              const profit = Number(deal.payout) - Number(deal.retailPrice);
+              // Use VIP pricing if applicable
+              const showVipPricing = isExclusiveMember && deal.isExclusive && deal.exclusivePrice;
+              const displayPayout = showVipPricing ? Number(deal.exclusivePrice) : Number(deal.payout);
+              const profit = displayPayout - Number(deal.retailPrice);
               const profitPercent = ((profit / Number(deal.retailPrice)) * 100).toFixed(1);
               
               return (
@@ -157,14 +170,17 @@ export default function SellerDashboard() {
                   className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-slate-900 truncate">{deal.title}</p>
+                    <p className="font-medium text-slate-900 truncate flex items-center gap-2">
+                      {deal.title}
+                      {showVipPricing && <Star className="w-3 h-3 text-amber-500" />}
+                    </p>
                     <div className="flex items-center gap-4 mt-1 text-sm">
                       <span className="text-slate-500">
                         <DollarSign className="w-3 h-3 inline" />
                         {Number(deal.retailPrice).toFixed(0)} retail
                       </span>
-                      <span className="text-green-600 font-medium">
-                        ${Number(deal.payout).toFixed(0)} payout
+                      <span className={`font-medium ${showVipPricing ? 'text-amber-600' : 'text-green-600'}`}>
+                        ${displayPayout.toFixed(0)} payout
                       </span>
                       <span className={`font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {profit >= 0 ? '+' : ''}{profitPercent}%

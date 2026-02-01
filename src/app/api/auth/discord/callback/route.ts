@@ -116,6 +116,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Check if this Discord account is already linked to another profile
+    const existingLink = await db.profile.findUnique({
+      where: { discordId },
+      select: { id: true },
+    });
+
+    if (existingLink && existingLink.id !== profile.id) {
+      console.log(`Discord ${discordId} already linked to another account`);
+      return NextResponse.redirect(`${origin}/dashboard/settings?error=discord_already_linked`);
+    }
+
     // Update profile with Discord info
     await db.profile.update({
       where: { id: profile.id },

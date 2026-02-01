@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Package, AlertCircle, CheckCircle, Clock, Tag, Users } from "lucide-react";
+import { ArrowLeft, Package, AlertCircle, CheckCircle, Clock, Tag, Users, Star, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,13 @@ interface Deal {
   imageUrl?: string;
   isExclusive?: boolean;
   exclusivePrice?: number;
+  linkAmazon?: string;
+  linkBestBuy?: string;
+  linkWalmart?: string;
+  linkHomeDepot?: string;
+  linkLowes?: string;
+  linkOther?: string;
+  linkOtherName?: string;
 }
 
 export default function DealDetailPage() {
@@ -37,26 +44,37 @@ export default function DealDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [isExclusiveMember, setIsExclusiveMember] = useState(false);
 
   useEffect(() => {
-    const fetchDeal = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch(`/api/deals/${dealId}`);
-        if (res.ok) {
-          const data = await res.json();
+        // Fetch deal and profile in parallel
+        const [dealRes, profileRes] = await Promise.all([
+          fetch(`/api/deals/${dealId}`),
+          fetch('/api/profile')
+        ]);
+        
+        if (dealRes.ok) {
+          const data = await dealRes.json();
           setDeal(data);
         } else {
           setDeal(null);
         }
+        
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          setIsExclusiveMember(profileData.isExclusiveMember || false);
+        }
       } catch (e) {
-        console.error('Error fetching deal:', e);
+        console.error('Error fetching data:', e);
         setDeal(null);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchDeal();
+    fetchData();
   }, [dealId]);
 
   if (loading) {
@@ -110,7 +128,12 @@ export default function DealDetailPage() {
   };
 
   const retailNum = Number(deal.retailPrice);
-  const payoutNum = Number(deal.payout);
+  const regularPayout = Number(deal.payout);
+  
+  // Use VIP pricing if user is exclusive member and deal has exclusive price
+  const showVipPricing = isExclusiveMember && deal.isExclusive && deal.exclusivePrice;
+  const payoutNum = showVipPricing ? Number(deal.exclusivePrice) : regularPayout;
+  
   const profit = payoutNum - retailNum;
   const profitPercent = ((profit / retailNum) * 100).toFixed(1);
   const isAbove = deal.priceType === "ABOVE_RETAIL";
@@ -195,9 +218,12 @@ export default function DealDetailPage() {
                   <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Retail</p>
                   <p className="text-lg lg:text-xl font-bold text-slate-900">${retailNum.toFixed(0)}</p>
                 </div>
-                <div className={`p-3 lg:p-4 rounded-xl ${isAbove ? "bg-emerald-50" : isRetail ? "bg-blue-50" : "bg-amber-50"}`}>
-                  <p className={`text-xs uppercase tracking-wider mb-1 ${isAbove ? "text-emerald-600" : isRetail ? "text-blue-600" : "text-amber-600"}`}>Payout</p>
-                  <p className={`text-lg lg:text-xl font-bold ${isAbove ? "text-emerald-700" : isRetail ? "text-blue-700" : "text-amber-700"}`}>${payoutNum.toFixed(0)}</p>
+                <div className={`p-3 lg:p-4 rounded-xl ${showVipPricing ? "bg-amber-50 ring-2 ring-amber-200" : isAbove ? "bg-emerald-50" : isRetail ? "bg-blue-50" : "bg-amber-50"}`}>
+                  <p className={`text-xs uppercase tracking-wider mb-1 flex items-center gap-1 ${showVipPricing ? "text-amber-600" : isAbove ? "text-emerald-600" : isRetail ? "text-blue-600" : "text-amber-600"}`}>
+                    {showVipPricing && <Star className="w-3 h-3" />}
+                    {showVipPricing ? "VIP Payout" : "Payout"}
+                  </p>
+                  <p className={`text-lg lg:text-xl font-bold ${showVipPricing ? "text-amber-700" : isAbove ? "text-emerald-700" : isRetail ? "text-blue-700" : "text-amber-700"}`}>${payoutNum.toFixed(0)}</p>
                 </div>
                 <div className={`p-3 lg:p-4 rounded-xl ${profit >= 0 ? "bg-green-50" : "bg-red-50"}`}>
                   <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Profit</p>
@@ -206,6 +232,17 @@ export default function DealDetailPage() {
                   </p>
                 </div>
               </div>
+              
+              {/* VIP hint for non-members on exclusive deals */}
+              {deal.isExclusive && !isExclusiveMember && (
+                <div className="mb-6 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
+                  <Star className="w-5 h-5 text-amber-500 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800">Exclusive Deal</p>
+                    <p className="text-xs text-amber-600">Link your Discord in Settings for VIP pricing</p>
+                  </div>
+                </div>
+              )}
 
               {/* Info Grid */}
               <div className="grid grid-cols-3 gap-3 lg:gap-4 p-3 lg:p-4 bg-slate-50 rounded-xl text-sm">
@@ -233,6 +270,75 @@ export default function DealDetailPage() {
                   </div>
                 </div>
               </div>
+              
+              {/* Retail Links */}
+              {(deal.linkAmazon || deal.linkBestBuy || deal.linkWalmart || deal.linkHomeDepot || deal.linkLowes || deal.linkOther) && (
+                <div className="mt-6">
+                  <p className="text-sm font-medium text-slate-700 mb-3">Buy from:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {deal.linkAmazon && (
+                      <a
+                        href={deal.linkAmazon}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg text-sm font-medium text-orange-700 transition-colors"
+                      >
+                        <span>🛒</span> Amazon <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    {deal.linkBestBuy && (
+                      <a
+                        href={deal.linkBestBuy}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 transition-colors"
+                      >
+                        <span>🏷️</span> Best Buy <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    {deal.linkWalmart && (
+                      <a
+                        href={deal.linkWalmart}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 transition-colors"
+                      >
+                        <span>🔵</span> Walmart <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    {deal.linkHomeDepot && (
+                      <a
+                        href={deal.linkHomeDepot}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg text-sm font-medium text-orange-700 transition-colors"
+                      >
+                        <span>🧰</span> Home Depot <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    {deal.linkLowes && (
+                      <a
+                        href={deal.linkLowes}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 transition-colors"
+                      >
+                        <span>🔧</span> Lowe's <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    {deal.linkOther && (
+                      <a
+                        href={deal.linkOther}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 transition-colors"
+                      >
+                        <span>🔗</span> {deal.linkOtherName || "Other"} <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -272,16 +378,19 @@ export default function DealDetailPage() {
 
               {/* Estimated Payout */}
               {quantity && Number(quantity) > 0 && (
-                <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                  <p className="text-sm font-medium text-emerald-700 mb-1">Estimated Payout</p>
-                  <p className="text-2xl font-bold text-emerald-700">
+                <div className={`p-4 rounded-xl border ${showVipPricing ? "bg-amber-50 border-amber-200" : "bg-emerald-50 border-emerald-100"}`}>
+                  <p className={`text-sm font-medium mb-1 flex items-center gap-1 ${showVipPricing ? "text-amber-700" : "text-emerald-700"}`}>
+                    {showVipPricing && <Star className="w-4 h-4" />}
+                    {showVipPricing ? "VIP Estimated Payout" : "Estimated Payout"}
+                  </p>
+                  <p className={`text-2xl font-bold ${showVipPricing ? "text-amber-700" : "text-emerald-700"}`}>
                     ${estimatedPayout.toFixed(2)}
                   </p>
-                  <p className="text-xs text-emerald-600 mt-1">
+                  <p className={`text-xs mt-1 ${showVipPricing ? "text-amber-600" : "text-emerald-600"}`}>
                     {quantity} units × ${payoutNum.toFixed(0)}/unit
                   </p>
                   {qualifiesForFreeLabel && (
-                    <p className="text-xs text-emerald-700 mt-2 font-medium">
+                    <p className={`text-xs mt-2 font-medium ${showVipPricing ? "text-amber-700" : "text-emerald-700"}`}>
                       ✓ Qualifies for free shipping label!
                     </p>
                   )}

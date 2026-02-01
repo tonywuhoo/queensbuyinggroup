@@ -125,6 +125,15 @@ model Deal {
   isExclusive     Boolean       @default(false)
   exclusivePrice  Decimal?      @db.Decimal(10, 2)
   
+  // Retail links
+  linkAmazon      String?
+  linkBestBuy     String?
+  linkWalmart     String?
+  linkHomeDepot   String?
+  linkLowes       String?
+  linkOther       String?
+  linkOtherName   String?       // Custom name for "Other" link
+  
   // Limits
   maxQuantity     Int?          // Total max
   limitPerVendor  Int?          // Per vendor limit
@@ -154,6 +163,10 @@ model Commitment {
   status          CommitmentStatus @default(PENDING)
   deliveryMethod  DeliveryMethod
   warehouse       String           // MA, NJ, CT, DE
+  
+  // Pricing - locked in at commitment time
+  payoutRate      Decimal?         @db.Decimal(10, 2)  // The payout per unit (regular or VIP)
+  isVipPricing    Boolean          @default(false)     // Whether VIP pricing was used
   
   // Timestamps
   createdAt       DateTime         @default(now())

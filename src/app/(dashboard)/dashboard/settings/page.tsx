@@ -46,11 +46,17 @@ export default function SettingsPage() {
       // Clean URL
       router.replace("/dashboard/settings");
     } else if (discordError) {
+      let errorMessage = "Failed to link Discord account. Please try again.";
+      
+      if (discordError === "discord_denied") {
+        errorMessage = "You cancelled the Discord authorization.";
+      } else if (discordError === "discord_already_linked") {
+        errorMessage = "This Discord account is already linked to another account.";
+      }
+      
       toast({
         title: "Discord Link Failed",
-        description: discordError === "discord_denied" 
-          ? "You cancelled the Discord authorization."
-          : "Failed to link Discord account. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
       router.replace("/dashboard/settings");

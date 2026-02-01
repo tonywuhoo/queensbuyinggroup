@@ -66,7 +66,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log("Creating deal with data:", body);
 
-    const { title, description, imageUrl, retailPrice, payout, limitPerVendor, freeLabelMin, deadline, status, isExclusive, exclusivePrice } = body;
+    const { 
+      title, description, imageUrl, retailPrice, payout, limitPerVendor, freeLabelMin, deadline, status, 
+      isExclusive, exclusivePrice,
+      linkAmazon, linkBestBuy, linkWalmart, linkHomeDepot, linkLowes, linkOther, linkOtherName
+    } = body;
 
     if (!title || retailPrice === undefined || payout === undefined) {
       return errorResponse("Missing required fields: title, retailPrice, payout");
@@ -94,6 +98,14 @@ export async function POST(request: NextRequest) {
         createdById: profile.id,
         isExclusive: isExclusive || false,
         exclusivePrice: exclusivePrice ? Number(exclusivePrice) : null,
+        // Retail links
+        linkAmazon: linkAmazon || null,
+        linkBestBuy: linkBestBuy || null,
+        linkWalmart: linkWalmart || null,
+        linkHomeDepot: linkHomeDepot || null,
+        linkLowes: linkLowes || null,
+        linkOther: linkOther || null,
+        linkOtherName: linkOtherName || null,
       }
     });
 
@@ -130,7 +142,11 @@ export async function PUT(request: NextRequest) {
     if (error) return errorResponse(error, 403);
 
     const body = await request.json();
-    const { id, isExclusive, exclusivePrice, ...updateData } = body;
+    const { 
+      id, isExclusive, exclusivePrice, 
+      linkAmazon, linkBestBuy, linkWalmart, linkHomeDepot, linkLowes, linkOther, linkOtherName,
+      ...updateData 
+    } = body;
 
     if (!id) {
       return errorResponse("Deal ID required");
@@ -163,6 +179,14 @@ export async function PUT(request: NextRequest) {
         ...updateData,
         isExclusive: isExclusive ?? currentDeal.isExclusive,
         exclusivePrice: exclusivePrice !== undefined ? (exclusivePrice ? Number(exclusivePrice) : null) : currentDeal.exclusivePrice,
+        // Retail links - only update if provided
+        ...(linkAmazon !== undefined && { linkAmazon: linkAmazon || null }),
+        ...(linkBestBuy !== undefined && { linkBestBuy: linkBestBuy || null }),
+        ...(linkWalmart !== undefined && { linkWalmart: linkWalmart || null }),
+        ...(linkHomeDepot !== undefined && { linkHomeDepot: linkHomeDepot || null }),
+        ...(linkLowes !== undefined && { linkLowes: linkLowes || null }),
+        ...(linkOther !== undefined && { linkOther: linkOther || null }),
+        ...(linkOtherName !== undefined && { linkOtherName: linkOtherName || null }),
       },
     });
 
