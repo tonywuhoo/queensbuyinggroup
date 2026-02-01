@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Package, Filter, CheckCircle, X, FileText, ExternalLink, AlertCircle } from "lucide-react";
+import { Search, Package, Filter, CheckCircle, X, FileText, ExternalLink, AlertCircle, Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,11 +25,14 @@ interface Commitment {
   deliveryMethod: string;
   warehouse: string;
   createdAt: string;
+  payoutRate?: number;
+  isVipPricing?: boolean;
   user: {
     id: string;
     firstName: string;
     lastName: string;
     vendorNumber: number;
+    isExclusiveMember?: boolean;
   };
   deal: {
     id: string;
@@ -163,9 +166,23 @@ export default function AdminCommitmentsPage() {
                   <p className="text-sm text-slate-500">{fulfillModal.quantity} units</p>
                 </div>
               </div>
-              <div className="text-sm text-slate-600">
-                <p><strong>Vendor:</strong> {fulfillModal.user.firstName} {fulfillModal.user.lastName} (U-{String(fulfillModal.user.vendorNumber).padStart(5, "0")})</p>
+              <div className="text-sm text-slate-600 space-y-1">
+                <p className="flex items-center gap-2">
+                  <strong>Vendor:</strong> {fulfillModal.user.firstName} {fulfillModal.user.lastName} (U-{String(fulfillModal.user.vendorNumber).padStart(5, "0")})
+                  {fulfillModal.user.isExclusiveMember && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-semibold">
+                      <Star className="w-2.5 h-2.5" />
+                      VIP
+                    </span>
+                  )}
+                </p>
                 <p><strong>Warehouse:</strong> {fulfillModal.warehouse}</p>
+                {fulfillModal.isVipPricing && fulfillModal.payoutRate && (
+                  <p className="flex items-center gap-1 text-amber-700">
+                    <Star className="w-3 h-3" />
+                    <strong>VIP Rate:</strong> ${Number(fulfillModal.payoutRate).toFixed(2)}/unit
+                  </p>
+                )}
                 {fulfillModal.tracking && <p><strong>Tracking:</strong> {fulfillModal.tracking.trackingNumber}</p>}
               </div>
             </div>
@@ -341,7 +358,15 @@ export default function AdminCommitmentsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div>
-                          <p className="font-medium text-slate-900 text-sm">{commitment.user.firstName} {commitment.user.lastName}</p>
+                          <p className="font-medium text-slate-900 text-sm flex items-center gap-1.5">
+                            {commitment.user.firstName} {commitment.user.lastName}
+                            {commitment.user.isExclusiveMember && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-semibold">
+                                <Star className="w-2.5 h-2.5" />
+                                VIP
+                              </span>
+                            )}
+                          </p>
                           <p className="text-xs text-slate-500 font-mono">{vendorId}</p>
                         </div>
                       </td>
@@ -369,7 +394,15 @@ export default function AdminCommitmentsPage() {
                         <span className="text-sm font-medium text-slate-900">{commitment.warehouse}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm font-medium text-slate-900">{commitment.quantity}</span>
+                        <div>
+                          <span className="text-sm font-medium text-slate-900">{commitment.quantity}</span>
+                          {commitment.isVipPricing && commitment.payoutRate && (
+                            <p className="text-[10px] text-amber-600 font-medium flex items-center gap-0.5">
+                              <Star className="w-2.5 h-2.5" />
+                              ${Number(commitment.payoutRate).toFixed(0)}/ea
+                            </p>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <Badge className={status.color}>{status.label}</Badge>

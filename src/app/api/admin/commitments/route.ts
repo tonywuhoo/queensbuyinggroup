@@ -32,6 +32,8 @@ export async function GET(request: NextRequest) {
             title: true,
             retailPrice: true,
             payout: true,
+            isExclusive: true,
+            exclusivePrice: true,
           }
         },
         user: {
@@ -41,6 +43,7 @@ export async function GET(request: NextRequest) {
             lastName: true,
             email: true,
             vendorNumber: true,
+            isExclusiveMember: true,
           }
         },
         tracking: true,

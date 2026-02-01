@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     if (deal.status !== "ACTIVE") return errorResponse("Deal is not active");
     
     // Determine payout rate based on VIP status
-    const isVipPricing = profile!.isExclusiveMember && deal.isExclusive && deal.exclusivePrice;
+    const isVipPricing = !!(profile!.isExclusiveMember && deal.isExclusive && deal.exclusivePrice);
     const payoutRate = isVipPricing ? Number(deal.exclusivePrice) : Number(deal.payout);
 
     // Check for existing commitments (fulfilled or active)
