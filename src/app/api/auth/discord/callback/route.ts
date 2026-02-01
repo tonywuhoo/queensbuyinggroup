@@ -4,7 +4,8 @@ import { getAuthProfile } from "@/lib/api-utils";
 
 // GET /api/auth/discord/callback - Handle Discord OAuth callback
 export async function GET(request: NextRequest) {
-  const origin = request.nextUrl.origin;
+  // Use explicit public URL to avoid Railway/Vercel internal URLs
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_WEBSITE_URL || "https://www.queensbuyinggroup.com";
   const code = request.nextUrl.searchParams.get("code");
   const error = request.nextUrl.searchParams.get("error");
 
