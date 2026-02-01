@@ -67,11 +67,11 @@ export async function notifyDiscordWebhook(payload: DealWebhookPayload): Promise
  * Format a deal object into a Discord webhook payload.
  *
  * @param deal Deal object from database (Prisma)
- * @param dealId Formatted deal ID (e.g., "D-00001")
  * @returns DealWebhookPayload
  */
 export function formatDealForDiscord(
   deal: {
+    id: string;
     title: string;
     description: string | null;
     imageUrl: string | null;
@@ -81,11 +81,10 @@ export function formatDealForDiscord(
     dealNumber: number;
     isExclusive?: boolean;
     exclusivePrice?: any; // Prisma Decimal or number
-  },
-  dealId: string
+  }
 ): DealWebhookPayload {
   const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://cashoutqueens.com';
-  const dealUrl = `${websiteUrl}/dashboard/deals/${dealId}`;
+  const dealUrl = `${websiteUrl}/dashboard/deals/${deal.id}`;
 
   // Convert Prisma Decimal to number if needed
   const retailPrice = typeof deal.retailPrice === 'number' ? deal.retailPrice : Number(deal.retailPrice);

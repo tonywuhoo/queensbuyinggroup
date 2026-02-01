@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
     if (deal.status === "ACTIVE") {
       try {
         const { notifyDiscordWebhook, formatDealForDiscord } = await import("@/lib/discord-webhook");
-        const webhookPayload = formatDealForDiscord(deal, dealId);
+        const webhookPayload = formatDealForDiscord(deal);
         await notifyDiscordWebhook(webhookPayload);
       } catch (webhookError) {
         // Log but don't fail the request if webhook fails
@@ -173,7 +173,7 @@ export async function PUT(request: NextRequest) {
     if (statusChangedToActive) {
       try {
         const { notifyDiscordWebhook, formatDealForDiscord } = await import("@/lib/discord-webhook");
-        const webhookPayload = formatDealForDiscord(deal, dealId);
+        const webhookPayload = formatDealForDiscord(deal);
         await notifyDiscordWebhook(webhookPayload);
         console.log("DISCORD_WEBHOOK | Notified for deal status change to ACTIVE:", dealId);
       } catch (webhookError) {
