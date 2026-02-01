@@ -22,6 +22,8 @@ interface Deal {
   freeLabelMin?: number;
   deadline?: string;
   imageUrl?: string;
+  isExclusive?: boolean;
+  exclusivePrice?: number;
 }
 
 export default function DealDetailPage() {
@@ -110,7 +112,7 @@ export default function DealDetailPage() {
   const retailNum = Number(deal.retailPrice);
   const payoutNum = Number(deal.payout);
   const profit = payoutNum - retailNum;
-  const percent = ((payoutNum / retailNum) * 100).toFixed(1);
+  const profitPercent = ((profit / retailNum) * 100).toFixed(1);
   const isAbove = deal.priceType === "ABOVE_RETAIL";
   const isRetail = deal.priceType === "RETAIL";
   
@@ -163,10 +165,18 @@ export default function DealDetailPage() {
         <div className="lg:col-span-2">
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
             {/* Image */}
-            <div className="w-full h-48 lg:h-64 bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center relative">
-              <Package className="w-24 h-24 text-slate-200" />
+            <div className="w-full h-48 lg:h-64 bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center relative overflow-hidden">
+              {deal.imageUrl ? (
+                <img 
+                  src={deal.imageUrl} 
+                  alt={deal.title}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <Package className="w-24 h-24 text-slate-200" />
+              )}
               <div className="absolute top-4 left-4">
-                <span className="text-xs font-mono bg-queens-purple/10 text-queens-purple px-2 py-1 rounded">
+                <span className="text-xs font-mono bg-queens-purple/10 text-queens-purple px-2 py-1 rounded backdrop-blur-sm">
                   {deal.dealId}
                 </span>
               </div>
@@ -189,9 +199,11 @@ export default function DealDetailPage() {
                   <p className={`text-xs uppercase tracking-wider mb-1 ${isAbove ? "text-emerald-600" : isRetail ? "text-blue-600" : "text-amber-600"}`}>Payout</p>
                   <p className={`text-lg lg:text-xl font-bold ${isAbove ? "text-emerald-700" : isRetail ? "text-blue-700" : "text-amber-700"}`}>${payoutNum.toFixed(0)}</p>
                 </div>
-                <div className="p-3 lg:p-4 bg-slate-50 rounded-xl">
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Percent</p>
-                  <p className="text-lg lg:text-xl font-bold text-slate-900">{percent}%</p>
+                <div className={`p-3 lg:p-4 rounded-xl ${profit >= 0 ? "bg-green-50" : "bg-red-50"}`}>
+                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Profit</p>
+                  <p className={`text-lg lg:text-xl font-bold ${profit >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {profit >= 0 ? "+" : ""}{profitPercent}%
+                  </p>
                 </div>
               </div>
 
