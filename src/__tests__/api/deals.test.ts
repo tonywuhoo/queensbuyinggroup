@@ -29,7 +29,7 @@ describe('Deals API', () => {
     });
   });
 
-  describe('POST /api/deals', () => {
+  describe('POST /api/admin/deals', () => {
     it('should require admin role', async () => {
       // Mock admin check
       const userRole = 'SELLER';

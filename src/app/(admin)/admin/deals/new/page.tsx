@@ -31,7 +31,7 @@ export default function NewDealPage() {
     setError("");
 
     try {
-      const res = await fetch('/api/deals', {
+      const res = await fetch('/api/admin/deals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
