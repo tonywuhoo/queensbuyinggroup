@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin, jsonResponse, errorResponse } from "@/lib/api-utils";
+import { notifyDiscordWebhook, formatDealForDiscord } from "@/lib/discord-webhook";
 
 // GET /api/admin/deals - List all deals with stats
 export async function GET(request: NextRequest) {
@@ -78,14 +79,34 @@ export async function PUT(request: NextRequest) {
       updateData.deadline = new Date(updateData.deadline);
     }
 
+    // Get current deal state before update
+    const currentDeal = await db.deal.findUnique({ where: { id } });
+    if (!currentDeal) {
+      return errorResponse("Deal not found", 404);
+    }
+
     const deal = await db.deal.update({
       where: { id },
       data: updateData,
     });
 
+    const dealId = `D-${String(deal.dealNumber).padStart(5, "0")}`;
+
+    // Notify Discord if status changed to ACTIVE
+    const statusChangedToActive = currentDeal.status !== "ACTIVE" && deal.status === "ACTIVE";
+    if (statusChangedToActive) {
+      try {
+        const webhookPayload = formatDealForDiscord(deal, dealId);
+        await notifyDiscordWebhook(webhookPayload);
+        console.log("DISCORD_WEBHOOK | Notified for deal status change to ACTIVE:", dealId);
+      } catch (webhookError) {
+        console.error("DISCORD_WEBHOOK | Failed to notify:", webhookError);
+      }
+    }
+
     return jsonResponse({
       ...deal,
-      dealId: `D-${String(deal.dealNumber).padStart(5, "0")}`,
+      dealId,
     });
   } catch (e: any) {
     console.error("PUT /api/admin/deals error:", e);

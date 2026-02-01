@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthProfile, requireAdmin, jsonResponse, errorResponse } from "@/lib/api-utils";
+import { notifyDiscordWebhook, formatDealForDiscord } from "@/lib/discord-webhook";
 
 // GET /api/deals - List deals (sellers only see ACTIVE, admins see all)
 export async function GET(request: NextRequest) {
@@ -113,10 +114,23 @@ export async function POST(request: NextRequest) {
     });
 
     console.log("Deal created:", deal.id, "DealNumber:", deal.dealNumber);
-    
+
+    const dealId = `D-${String(deal.dealNumber).padStart(5, "0")}`;
+
+    // Notify Discord webhook if deal is ACTIVE
+    if (deal.status === "ACTIVE") {
+      try {
+        const webhookPayload = formatDealForDiscord(deal, dealId);
+        await notifyDiscordWebhook(webhookPayload);
+      } catch (webhookError) {
+        // Log but don't fail the request if webhook fails
+        console.error("DISCORD_WEBHOOK | Failed to notify:", webhookError);
+      }
+    }
+
     return jsonResponse({
       ...deal,
-      dealId: `D-${String(deal.dealNumber).padStart(5, "0")}`,
+      dealId,
     }, 201);
   } catch (e: any) {
     console.error("POST /api/deals error:", e);
