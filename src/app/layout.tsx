@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   title: "Queens Buying Group",
   description: "Your trusted partner for buying and selling with ease and confidence.",
   keywords: ["buying group", "electronics", "resale", "queens"],
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
