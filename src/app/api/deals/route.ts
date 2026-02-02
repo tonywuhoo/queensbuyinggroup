@@ -53,10 +53,10 @@ export async function GET(request: NextRequest) {
         linkAmazon: true,
         linkBestBuy: true,
         linkWalmart: true,
+        linkTarget: true,
         linkHomeDepot: true,
         linkLowes: true,
         linkOther: true,
-        linkOtherName: true,
         _count: {
           select: { commitments: true }
         }

@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     const { 
       title, description, imageUrl, retailPrice, payout, limitPerVendor, freeLabelMin, deadline, status, 
       isExclusive, exclusivePrice,
-      linkAmazon, linkBestBuy, linkWalmart, linkHomeDepot, linkLowes, linkOther, linkOtherName
+      linkAmazon, linkBestBuy, linkWalmart, linkTarget, linkHomeDepot, linkLowes, linkOther
     } = body;
 
     if (!title || retailPrice === undefined || payout === undefined) {
@@ -102,10 +102,10 @@ export async function POST(request: NextRequest) {
         linkAmazon: linkAmazon || null,
         linkBestBuy: linkBestBuy || null,
         linkWalmart: linkWalmart || null,
+        linkTarget: linkTarget || null,
         linkHomeDepot: linkHomeDepot || null,
         linkLowes: linkLowes || null,
         linkOther: linkOther || null,
-        linkOtherName: linkOtherName || null,
       }
     });
 
@@ -144,7 +144,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { 
       id, isExclusive, exclusivePrice, 
-      linkAmazon, linkBestBuy, linkWalmart, linkHomeDepot, linkLowes, linkOther, linkOtherName,
+      linkAmazon, linkBestBuy, linkWalmart, linkTarget, linkHomeDepot, linkLowes, linkOther,
       ...updateData 
     } = body;
 
@@ -183,10 +183,10 @@ export async function PUT(request: NextRequest) {
         ...(linkAmazon !== undefined && { linkAmazon: linkAmazon || null }),
         ...(linkBestBuy !== undefined && { linkBestBuy: linkBestBuy || null }),
         ...(linkWalmart !== undefined && { linkWalmart: linkWalmart || null }),
+        ...(linkTarget !== undefined && { linkTarget: linkTarget || null }),
         ...(linkHomeDepot !== undefined && { linkHomeDepot: linkHomeDepot || null }),
         ...(linkLowes !== undefined && { linkLowes: linkLowes || null }),
         ...(linkOther !== undefined && { linkOther: linkOther || null }),
-        ...(linkOtherName !== undefined && { linkOtherName: linkOtherName || null }),
       },
     });
 

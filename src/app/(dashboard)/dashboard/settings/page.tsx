@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { User, Lock, Save, AlertCircle, MessageCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { User, Lock, Save, AlertCircle, MessageCircle, CheckCircle, XCircle, Loader2, Building, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,18 @@ interface UserProfile {
   email: string;
   phone?: string;
   vendorId: string;
+  // Business info
+  companyName?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  // Bank info
+  bankName?: string;
+  bankRouting?: string;
+  bankAccount?: string;
+  accountingNotes?: string;
+  // Discord
   discordId?: string;
   discordUsername?: string;
   discordAvatar?: string;
@@ -93,6 +105,15 @@ export default function SettingsPage() {
       firstName: formData.get("firstName") as string,
       lastName: formData.get("lastName") as string,
       phone: formData.get("phone") as string,
+      companyName: formData.get("companyName") as string,
+      address: formData.get("address") as string,
+      city: formData.get("city") as string,
+      state: formData.get("state") as string,
+      zipCode: formData.get("zipCode") as string,
+      bankName: formData.get("bankName") as string,
+      bankRouting: formData.get("bankRouting") as string,
+      bankAccount: formData.get("bankAccount") as string,
+      accountingNotes: formData.get("accountingNotes") as string,
     };
 
     try {
@@ -323,7 +344,120 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div className="flex justify-end">
+              {/* Business Info */}
+              <div className="pt-4 border-t border-slate-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <Building className="w-4 h-4 text-slate-500" />
+                  <span className="text-sm font-medium text-slate-700">Business Information (Optional)</span>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName">Company Name</Label>
+                    <Input
+                      id="companyName"
+                      name="companyName"
+                      defaultValue={user.companyName || ""}
+                      placeholder="Your business name"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Address</Label>
+                    <Input
+                      id="address"
+                      name="address"
+                      defaultValue={user.address || ""}
+                      placeholder="123 Main St"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City</Label>
+                      <Input
+                        id="city"
+                        name="city"
+                        defaultValue={user.city || ""}
+                        placeholder="City"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="state">State</Label>
+                      <Input
+                        id="state"
+                        name="state"
+                        defaultValue={user.state || ""}
+                        placeholder="NY"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="zipCode">ZIP</Label>
+                      <Input
+                        id="zipCode"
+                        name="zipCode"
+                        defaultValue={user.zipCode || ""}
+                        placeholder="10001"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bank Info */}
+              <div className="pt-4 border-t border-slate-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <CreditCard className="w-4 h-4 text-slate-500" />
+                  <span className="text-sm font-medium text-slate-700">Payment Information (Optional)</span>
+                </div>
+                <p className="text-xs text-slate-500 mb-4">Used for ACH payments. This information is kept secure and only visible to admins.</p>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="bankName">Bank Name</Label>
+                    <Input
+                      id="bankName"
+                      name="bankName"
+                      defaultValue={user.bankName || ""}
+                      placeholder="Chase, Bank of America, etc."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="bankRouting">Routing Number</Label>
+                      <Input
+                        id="bankRouting"
+                        name="bankRouting"
+                        defaultValue={user.bankRouting || ""}
+                        placeholder="9 digits"
+                        maxLength={9}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bankAccount">Account Number</Label>
+                      <Input
+                        id="bankAccount"
+                        name="bankAccount"
+                        defaultValue={user.bankAccount || ""}
+                        placeholder="Account number"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="accountingNotes">Accounting Notes</Label>
+                    <Input
+                      id="accountingNotes"
+                      name="accountingNotes"
+                      defaultValue={user.accountingNotes || ""}
+                      placeholder="Any special payment instructions..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
                 <Button type="submit" disabled={isProfileLoading}>
                   {isProfileLoading ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />

@@ -33,10 +33,10 @@ export async function GET(
         linkAmazon: true,
         linkBestBuy: true,
         linkWalmart: true,
+        linkTarget: true,
         linkHomeDepot: true,
         linkLowes: true,
         linkOther: true,
-        linkOtherName: true,
       }
     });
 

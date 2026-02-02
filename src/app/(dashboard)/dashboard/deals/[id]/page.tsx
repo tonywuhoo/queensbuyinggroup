@@ -27,10 +27,10 @@ interface Deal {
   linkAmazon?: string;
   linkBestBuy?: string;
   linkWalmart?: string;
+  linkTarget?: string;
   linkHomeDepot?: string;
   linkLowes?: string;
   linkOther?: string;
-  linkOtherName?: string;
 }
 
 export default function DealDetailPage() {
@@ -272,7 +272,7 @@ export default function DealDetailPage() {
               </div>
               
               {/* Retail Links */}
-              {(deal.linkAmazon || deal.linkBestBuy || deal.linkWalmart || deal.linkHomeDepot || deal.linkLowes || deal.linkOther) && (
+              {(deal.linkAmazon || deal.linkBestBuy || deal.linkWalmart || deal.linkTarget || deal.linkHomeDepot || deal.linkLowes || deal.linkOther) && (
                 <div className="mt-6">
                   <p className="text-sm font-medium text-slate-700 mb-3">Buy from:</p>
                   <div className="flex flex-wrap gap-2">
@@ -306,6 +306,16 @@ export default function DealDetailPage() {
                         <span>🔵</span> Walmart <ExternalLink className="w-3 h-3" />
                       </a>
                     )}
+                    {deal.linkTarget && (
+                      <a
+                        href={deal.linkTarget}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg text-sm font-medium text-red-700 transition-colors"
+                      >
+                        <span>🎯</span> Target <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
                     {deal.linkHomeDepot && (
                       <a
                         href={deal.linkHomeDepot}
@@ -333,7 +343,7 @@ export default function DealDetailPage() {
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 transition-colors"
                       >
-                        <span>🔗</span> {deal.linkOtherName || "Other"} <ExternalLink className="w-3 h-3" />
+                        <span>🔗</span> Other <ExternalLink className="w-3 h-3" />
                       </a>
                     )}
                   </div>

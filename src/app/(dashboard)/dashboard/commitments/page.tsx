@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Package, Truck, Clock, CheckCircle, FileText, MapPin, AlertCircle, X, Settings } from "lucide-react";
+import { Package, Truck, Clock, CheckCircle, FileText, MapPin, AlertCircle, X, Settings, Pencil } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 interface Commitment {
@@ -16,6 +17,8 @@ interface Commitment {
   createdAt: string;
   shippedAt?: string;
   fulfilledAt?: string;
+  payoutRate?: number;
+  isVipPricing?: boolean;
   deal: {
     id: string;
     dealId: string;
@@ -62,6 +65,7 @@ export default function CommitmentsPage() {
   const [editingCommitment, setEditingCommitment] = useState<Commitment | null>(null);
   const [editDeliveryMethod, setEditDeliveryMethod] = useState<string>("");
   const [editWarehouse, setEditWarehouse] = useState<string>("");
+  const [editQuantity, setEditQuantity] = useState<number>(0);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
   
@@ -110,28 +114,50 @@ export default function CommitmentsPage() {
     setEditingCommitment(commitment);
     setEditDeliveryMethod(commitment.deliveryMethod);
     setEditWarehouse(commitment.warehouse === "TBD" ? "" : commitment.warehouse);
+    setEditQuantity(commitment.quantity);
   };
 
   const closeEditModal = () => {
     setEditingCommitment(null);
     setEditDeliveryMethod("");
     setEditWarehouse("");
+    setEditQuantity(0);
     setEditError("");
   };
 
   const saveDeliveryDetails = async () => {
-    if (!editingCommitment || !editDeliveryMethod || !editWarehouse) return;
+    if (!editingCommitment) return;
+    
+    // Validate - either setting delivery for first time or editing existing
+    const isSettingDelivery = editingCommitment.warehouse === "TBD";
+    if (isSettingDelivery && (!editDeliveryMethod || !editWarehouse)) return;
     
     setSaving(true);
+    setEditError("");
     try {
+      const updateBody: any = { id: editingCommitment.id };
+      
+      // Only include changed fields
+      if (editDeliveryMethod && editDeliveryMethod !== editingCommitment.deliveryMethod) {
+        updateBody.deliveryMethod = editDeliveryMethod;
+      }
+      if (editWarehouse && editWarehouse !== editingCommitment.warehouse) {
+        updateBody.warehouse = editWarehouse;
+      }
+      if (editQuantity && editQuantity !== editingCommitment.quantity) {
+        updateBody.quantity = editQuantity;
+      }
+      
+      // For first-time setup, always include both
+      if (isSettingDelivery) {
+        updateBody.deliveryMethod = editDeliveryMethod;
+        updateBody.warehouse = editWarehouse;
+      }
+      
       const res = await fetch('/api/commitments', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: editingCommitment.id,
-          deliveryMethod: editDeliveryMethod,
-          warehouse: editWarehouse,
-        })
+        body: JSON.stringify(updateBody)
       });
 
       if (res.ok) {
@@ -143,6 +169,7 @@ export default function CommitmentsPage() {
       }
     } catch (e) {
       console.error('Error updating commitment:', e);
+      setEditError('Failed to update commitment');
     } finally {
       setSaving(false);
     }
@@ -203,9 +230,12 @@ export default function CommitmentsPage() {
   }
 
   const CommitmentCard = ({ commitment }: { commitment: Commitment }) => {
-    const payout = Number(commitment.deal.payout) * commitment.quantity;
+    // Use locked-in payout rate if available, otherwise fall back to deal payout
+    const rate = commitment.payoutRate ? Number(commitment.payoutRate) : Number(commitment.deal.payout);
+    const payout = rate * commitment.quantity;
     const needsSetup = commitment.warehouse === "TBD";
     const qualifiesForFreeLabel = commitment.deal.freeLabelMin && commitment.quantity >= commitment.deal.freeLabelMin;
+    const isVip = commitment.isVipPricing;
     
     return (
       <div className={`bg-white rounded-xl border p-4 hover:shadow-md transition-shadow ${needsSetup ? "border-purple-300" : "border-slate-200"}`}>
@@ -240,7 +270,10 @@ export default function CommitmentsPage() {
         </div>
 
         <div className="flex items-center justify-between">
-          <p className="text-green-600 font-semibold">${payout.toLocaleString()} payout</p>
+          <p className={`font-semibold flex items-center gap-1 ${isVip ? "text-amber-600" : "text-green-600"}`}>
+            {isVip && <span className="text-xs bg-amber-100 px-1.5 py-0.5 rounded">VIP</span>}
+            ${payout.toLocaleString()} payout
+          </p>
           
           <div className="flex gap-2">
             {/* Needs setup */}
@@ -308,18 +341,46 @@ export default function CommitmentsPage() {
       {/* Edit Modal */}
       {editingCommitment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={closeEditModal}>
-          <div className="bg-white rounded-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-slate-100">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-slate-900">Set Delivery Details</h2>
+                <h2 className="text-lg font-bold text-slate-900">
+                  {editingCommitment.warehouse === "TBD" ? "Set Delivery Details" : "Edit Commitment"}
+                </h2>
                 <button onClick={closeEditModal} className="text-slate-400 hover:text-slate-600">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <p className="text-sm text-slate-500 mt-1">{editingCommitment.deal.title}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{editingCommitment.commitmentId}</p>
             </div>
 
             <div className="p-6 space-y-6">
+              {/* Quantity */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Quantity</label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={editQuantity}
+                  onChange={(e) => setEditQuantity(Number(e.target.value))}
+                  className="w-full"
+                />
+                {(() => {
+                  const rate = editingCommitment.payoutRate ? Number(editingCommitment.payoutRate) : Number(editingCommitment.deal.payout);
+                  const isVip = editingCommitment.isVipPricing;
+                  return (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Estimated payout: 
+                      <span className={`font-semibold ml-1 ${isVip ? "text-amber-600" : "text-green-600"}`}>
+                        ${(editQuantity * rate).toLocaleString()}
+                      </span>
+                      {isVip && <span className="ml-1 text-amber-600">(VIP rate)</span>}
+                    </p>
+                  );
+                })()}
+              </div>
+
               {/* Delivery Method */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Delivery Method</label>

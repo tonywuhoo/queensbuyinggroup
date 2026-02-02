@@ -83,6 +83,17 @@ model Profile {
   // Vendor ID: Auto-incrementing number, displayed as U-XXXXX
   vendorNumber  Int      @unique @default(autoincrement())
   
+  // Business / Payment Info (optional)
+  companyName   String?
+  address       String?
+  city          String?
+  state         String?
+  zipCode       String?
+  bankName      String?
+  bankRouting   String?
+  bankAccount   String?
+  accountingNotes String?
+  
   // Discord integration (for exclusive deals)
   discordId               String?   @unique
   discordUsername         String?
@@ -129,6 +140,7 @@ model Deal {
   linkAmazon      String?
   linkBestBuy     String?
   linkWalmart     String?
+  linkTarget      String?
   linkHomeDepot   String?
   linkLowes       String?
   linkOther       String?

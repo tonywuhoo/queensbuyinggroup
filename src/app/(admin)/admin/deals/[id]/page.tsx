@@ -24,10 +24,10 @@ interface Deal {
   linkAmazon?: string;
   linkBestBuy?: string;
   linkWalmart?: string;
+  linkTarget?: string;
   linkHomeDepot?: string;
   linkLowes?: string;
   linkOther?: string;
-  linkOtherName?: string;
 }
 
 export default function EditDealPage() {
@@ -54,10 +54,10 @@ export default function EditDealPage() {
     linkAmazon: "",
     linkBestBuy: "",
     linkWalmart: "",
+    linkTarget: "",
     linkHomeDepot: "",
     linkLowes: "",
     linkOther: "",
-    linkOtherName: "",
   });
 
   useEffect(() => {
@@ -83,10 +83,10 @@ export default function EditDealPage() {
               linkAmazon: deal.linkAmazon || "",
               linkBestBuy: deal.linkBestBuy || "",
               linkWalmart: deal.linkWalmart || "",
+              linkTarget: deal.linkTarget || "",
               linkHomeDepot: deal.linkHomeDepot || "",
               linkLowes: deal.linkLowes || "",
               linkOther: deal.linkOther || "",
-              linkOtherName: deal.linkOtherName || "",
             });
           }
         }
@@ -125,10 +125,10 @@ export default function EditDealPage() {
           linkAmazon: formData.linkAmazon || null,
           linkBestBuy: formData.linkBestBuy || null,
           linkWalmart: formData.linkWalmart || null,
+          linkTarget: formData.linkTarget || null,
           linkHomeDepot: formData.linkHomeDepot || null,
           linkLowes: formData.linkLowes || null,
           linkOther: formData.linkOther || null,
-          linkOtherName: formData.linkOtherName || null,
         })
       });
 
@@ -482,6 +482,20 @@ export default function EditDealPage() {
               </div>
               
               <div>
+                <Label htmlFor="linkTarget" className="flex items-center gap-2">
+                  <span className="text-lg">🎯</span> Target
+                </Label>
+                <Input
+                  id="linkTarget"
+                  type="url"
+                  value={formData.linkTarget}
+                  onChange={(e) => setFormData({ ...formData, linkTarget: e.target.value })}
+                  placeholder="https://target.com/..."
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
                 <Label htmlFor="linkHomeDepot" className="flex items-center gap-2">
                   <span className="text-lg">🧰</span> Home Depot
                 </Label>
@@ -515,24 +529,14 @@ export default function EditDealPage() {
                 <Label htmlFor="linkOther" className="flex items-center gap-2">
                   <span className="text-lg">🔗</span> Other
                 </Label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    id="linkOtherName"
-                    type="text"
-                    value={formData.linkOtherName}
-                    onChange={(e) => setFormData({ ...formData, linkOtherName: e.target.value })}
-                    placeholder="Store name"
-                    className="w-1/3"
-                  />
-                  <Input
-                    id="linkOther"
-                    type="url"
-                    value={formData.linkOther}
-                    onChange={(e) => setFormData({ ...formData, linkOther: e.target.value })}
-                    placeholder="https://..."
-                    className="flex-1"
-                  />
-                </div>
+                <Input
+                  id="linkOther"
+                  type="url"
+                  value={formData.linkOther}
+                  onChange={(e) => setFormData({ ...formData, linkOther: e.target.value })}
+                  placeholder="https://..."
+                  className="mt-1"
+                />
               </div>
             </div>
           </div>
