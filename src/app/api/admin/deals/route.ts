@@ -238,7 +238,10 @@ export async function DELETE(request: NextRequest) {
               where: { status: { not: "CANCELLED" } }
             } 
           } 
-        } 
+        },
+        commitments: {
+          select: { id: true }
+        }
       }
     });
 
@@ -250,6 +253,38 @@ export async function DELETE(request: NextRequest) {
       return errorResponse("Cannot delete deal with active commitments. Set status to CLOSED instead.");
     }
 
+    // Get all commitment IDs for this deal (including cancelled)
+    const commitmentIds = deal.commitments.map(c => c.id);
+
+    // Delete in order to respect foreign key constraints
+    // 1. Delete invoices linked to commitments
+    if (commitmentIds.length > 0) {
+      await db.invoice.deleteMany({
+        where: { commitmentId: { in: commitmentIds } }
+      });
+
+      // 2. Delete tracking records linked to commitments
+      await db.tracking.deleteMany({
+        where: { commitmentId: { in: commitmentIds } }
+      });
+
+      // 3. Delete label requests linked to commitments
+      await db.labelRequest.deleteMany({
+        where: { commitmentId: { in: commitmentIds } }
+      });
+
+      // 4. Delete all commitments (including cancelled ones)
+      await db.commitment.deleteMany({
+        where: { dealId: id }
+      });
+    }
+
+    // 5. Delete label requests linked directly to deal (if any orphaned)
+    await db.labelRequest.deleteMany({
+      where: { dealId: id }
+    });
+
+    // 6. Finally delete the deal
     await db.deal.delete({ where: { id } });
 
     return jsonResponse({ success: true });
