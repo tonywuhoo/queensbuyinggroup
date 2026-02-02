@@ -120,24 +120,29 @@ export function formatDealForDiscord(
   const retailPrice = typeof deal.retailPrice === 'number' ? deal.retailPrice : Number(deal.retailPrice);
   const payout = typeof deal.payout === 'number' ? deal.payout : Number(deal.payout);
 
-  // Calculate profit percentage (how much user makes per dollar spent)
-  let profit: string | undefined;
-  if (retailPrice > 0 && payout > 0) {
-    const profitPercent = Math.round(((payout - retailPrice) / retailPrice) * 100);
-    profit = profitPercent > 0 ? `+${profitPercent}%` : `${profitPercent}%`;
-  }
-
   // Exclusive price if applicable
   let exclusivePriceStr: string | undefined;
+  let exclusiveNum: number | undefined;
   if (deal.isExclusive && deal.exclusivePrice) {
-    const exclusiveNum = typeof deal.exclusivePrice === 'number' ? deal.exclusivePrice : Number(deal.exclusivePrice);
+    exclusiveNum = typeof deal.exclusivePrice === 'number' ? deal.exclusivePrice : Number(deal.exclusivePrice);
     exclusivePriceStr = `$${exclusiveNum.toFixed(2)}`;
+  }
+
+  // Calculate profit percentage using the BEST payout (VIP if available, otherwise regular)
+  // Formula: (payout - retail) / retail * 100
+  let profit: string | undefined;
+  const effectivePayout = exclusiveNum || payout;
+  if (retailPrice > 0 && effectivePayout > 0) {
+    const profitPercent = ((effectivePayout - retailPrice) / retailPrice) * 100;
+    // Round to 1 decimal place like the website
+    const rounded = Math.round(profitPercent * 10) / 10;
+    profit = rounded > 0 ? `+${rounded}%` : `${rounded}%`;
   }
 
   // Build retail links array
   const retailLinks: RetailLink[] = [];
   if (deal.linkAmazon) {
-    retailLinks.push({ name: 'Amazon', url: deal.linkAmazon, emoji: '🛒' });
+    retailLinks.push({ name: 'Amazon', url: deal.linkAmazon, emoji: '📦' });
   }
   if (deal.linkBestBuy) {
     retailLinks.push({ name: 'Best Buy', url: deal.linkBestBuy, emoji: '🟡' });
