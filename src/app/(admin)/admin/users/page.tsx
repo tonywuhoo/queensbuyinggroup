@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, User, Mail, ChevronRight, Building, CreditCard, Copy, Star, Phone } from "lucide-react";
+import { Search, User, Mail, ChevronRight, Building, CreditCard, Copy, Star, Phone, AlertTriangle, ShieldAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface UserProfile {
   id: string;
+  authId: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -35,11 +37,23 @@ interface UserProfile {
   };
 }
 
+interface RoleChangeModal {
+  userId: string;
+  authId: string;
+  userName: string;
+  currentRole: string;
+  newRole: string;
+}
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [roleChangeModal, setRoleChangeModal] = useState<RoleChangeModal | null>(null);
+  const [confirmText, setConfirmText] = useState("");
+  const [roleChangeLoading, setRoleChangeLoading] = useState(false);
+  const [roleChangeError, setRoleChangeError] = useState("");
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -69,20 +83,72 @@ export default function AdminUsersPage() {
     );
   });
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
+  const initiateRoleChange = (user: UserProfile, newRole: string) => {
+    // Skip if same role
+    if (user.role === newRole) return;
+    
+    // Always show confirmation for role changes involving ADMIN
+    if (newRole === "ADMIN" || user.role === "ADMIN") {
+      setRoleChangeModal({
+        userId: user.id,
+        authId: user.authId,
+        userName: `${user.firstName} ${user.lastName}`,
+        currentRole: user.role,
+        newRole,
+      });
+      setConfirmText("");
+      setRoleChangeError("");
+    } else {
+      // Non-admin role changes can proceed without typing confirmation
+      executeRoleChange(user.id, user.authId, newRole, user.role);
+    }
+  };
+
+  const executeRoleChange = async (userId: string, authId: string, newRole: string, previousRole: string) => {
+    setRoleChangeLoading(true);
+    setRoleChangeError("");
+    
     try {
       const res = await fetch('/api/admin/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, role: newRole })
+        body: JSON.stringify({ 
+          userId, 
+          authId,
+          role: newRole,
+          previousRole,
+          revokeSession: previousRole === "ADMIN" && newRole !== "ADMIN"
+        })
       });
       
       if (res.ok) {
         setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+        setRoleChangeModal(null);
+        setConfirmText("");
+      } else {
+        const data = await res.json();
+        setRoleChangeError(data.error || "Failed to update role");
       }
     } catch (e) {
       console.error('Error updating user:', e);
+      setRoleChangeError("Failed to update role");
+    } finally {
+      setRoleChangeLoading(false);
     }
+  };
+
+  const handleConfirmRoleChange = () => {
+    if (!roleChangeModal) return;
+    if (confirmText !== "Confirm") {
+      setRoleChangeError('Please type "Confirm" to proceed');
+      return;
+    }
+    executeRoleChange(
+      roleChangeModal.userId, 
+      roleChangeModal.authId,
+      roleChangeModal.newRole, 
+      roleChangeModal.currentRole
+    );
   };
 
   if (loading) {
@@ -162,7 +228,7 @@ export default function AdminUsersPage() {
               <div className="flex items-center gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                 <select
                   value={user.role}
-                  onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                  onChange={(e) => initiateRoleChange(user, e.target.value)}
                   className="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white"
                 >
                   <option value="SELLER">Seller</option>
@@ -339,6 +405,116 @@ export default function AdminUsersPage() {
                   View Commitments
                 </a>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Role Change Confirmation Modal */}
+      {roleChangeModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6">
+            <div className="flex items-center gap-3 mb-4">
+              {roleChangeModal.newRole === "ADMIN" ? (
+                <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                  <ShieldAlert className="w-6 h-6 text-amber-600" />
+                </div>
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+              )}
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  {roleChangeModal.newRole === "ADMIN" ? "Grant Admin Access?" : "Revoke Admin Access?"}
+                </h3>
+                <p className="text-sm text-slate-500">This action requires confirmation</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-lg p-4 mb-4">
+              <p className="text-sm text-slate-700">
+                You are about to change <strong>{roleChangeModal.userName}</strong>&apos;s role:
+              </p>
+              <div className="flex items-center gap-2 mt-2">
+                <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                  roleChangeModal.currentRole === "ADMIN" 
+                    ? "bg-red-100 text-red-700" 
+                    : "bg-slate-200 text-slate-700"
+                }`}>
+                  {roleChangeModal.currentRole}
+                </span>
+                <span className="text-slate-400">→</span>
+                <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                  roleChangeModal.newRole === "ADMIN" 
+                    ? "bg-red-100 text-red-700" 
+                    : "bg-slate-200 text-slate-700"
+                }`}>
+                  {roleChangeModal.newRole}
+                </span>
+              </div>
+            </div>
+
+            {roleChangeModal.currentRole === "ADMIN" && roleChangeModal.newRole !== "ADMIN" && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-amber-800">
+                  <strong>Note:</strong> This user&apos;s active sessions will be revoked and they will be logged out immediately.
+                </p>
+              </div>
+            )}
+
+            {roleChangeModal.newRole === "ADMIN" && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-red-800">
+                  <strong>Warning:</strong> Admin users have full access to manage deals, users, commitments, and all system settings.
+                </p>
+              </div>
+            )}
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Type <strong>&quot;Confirm&quot;</strong> to proceed
+              </label>
+              <input
+                type="text"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder="Type Confirm here..."
+                className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-queens-purple/20"
+                autoFocus
+              />
+            </div>
+
+            {roleChangeError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-red-700">{roleChangeError}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRoleChangeModal(null);
+                  setConfirmText("");
+                  setRoleChangeError("");
+                }}
+                className="flex-1"
+                disabled={roleChangeLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmRoleChange}
+                disabled={confirmText !== "Confirm" || roleChangeLoading}
+                className={`flex-1 ${
+                  roleChangeModal.newRole === "ADMIN" 
+                    ? "bg-amber-600 hover:bg-amber-700" 
+                    : "bg-red-600 hover:bg-red-700"
+                }`}
+              >
+                {roleChangeLoading ? "Updating..." : "Confirm Change"}
+              </Button>
             </div>
           </div>
         </div>
