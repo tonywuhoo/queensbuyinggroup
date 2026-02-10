@@ -79,7 +79,7 @@ export function Sidebar({ role, user }: SidebarProps) {
     <>
       {/* Logo */}
       <div className="flex h-16 items-center px-6 border-b border-slate-800">
-        <Logo size="sm" href="/" className="[&_span]:text-white [&_.text-queens-purple]:text-queens-lavender" />
+        <Logo size="sm" className="[&_span]:text-white [&_.text-queens-purple]:text-queens-lavender" />
       </div>
 
       {/* Vendor ID */}
@@ -178,7 +178,7 @@ export function Sidebar({ role, user }: SidebarProps) {
     <>
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900 border-b border-slate-800 px-4 h-14 flex items-center justify-between">
-        <Logo size="sm" href="/" className="[&_span]:text-white [&_.text-queens-purple]:text-queens-lavender" />
+        <Logo size="sm" className="[&_span]:text-white [&_.text-queens-purple]:text-queens-lavender" />
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           className="p-2 rounded-lg bg-slate-800 text-white"

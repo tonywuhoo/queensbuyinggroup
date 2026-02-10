@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Package, Filter, CheckCircle, X, FileText, ExternalLink, AlertCircle } from "lucide-react";
+import { Search, Package, Filter, CheckCircle, X, FileText, ExternalLink, AlertCircle, Star, User, Building, CreditCard, Copy } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,11 +25,25 @@ interface Commitment {
   deliveryMethod: string;
   warehouse: string;
   createdAt: string;
+  payoutRate?: number;
+  isVipPricing?: boolean;
   user: {
     id: string;
     firstName: string;
     lastName: string;
+    email: string;
+    phone?: string;
     vendorNumber: number;
+    isExclusiveMember?: boolean;
+    companyName?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    bankName?: string;
+    bankRouting?: string;
+    bankAccount?: string;
+    accountingNotes?: string;
   };
   deal: {
     id: string;
@@ -64,6 +78,7 @@ export default function AdminCommitmentsPage() {
   const [invoiceUrl, setInvoiceUrl] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [fulfillError, setFulfillError] = useState("");
+  const [clientInfoModal, setClientInfoModal] = useState<Commitment | null>(null);
 
   const fetchCommitments = async () => {
     try {
@@ -142,8 +157,126 @@ export default function AdminCommitmentsPage() {
     );
   }
 
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    // Could add toast here
+  };
+
   return (
     <div className="p-6">
+      {/* Client Info Modal */}
+      {clientInfoModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg relative max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setClientInfoModal(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-xl font-bold text-slate-900 mb-1">Client Information</h2>
+            <p className="text-sm text-slate-500 mb-6">U-{String(clientInfoModal.user.vendorNumber).padStart(5, "0")}</p>
+            
+            {/* Basic Info */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+                <User className="w-5 h-5 text-slate-400" />
+                <div className="flex-1">
+                  <p className="font-medium text-slate-900">
+                    {clientInfoModal.user.firstName} {clientInfoModal.user.lastName}
+                    {clientInfoModal.user.isExclusiveMember && (
+                      <span className="ml-2 inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-semibold">
+                        <Star className="w-2.5 h-2.5" />
+                        VIP
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-sm text-slate-500">{clientInfoModal.user.email}</p>
+                  {clientInfoModal.user.phone && <p className="text-sm text-slate-500">{clientInfoModal.user.phone}</p>}
+                </div>
+              </div>
+
+              {/* Company / Address */}
+              {(clientInfoModal.user.companyName || clientInfoModal.user.address) && (
+                <div className="p-4 bg-slate-50 rounded-xl">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Building className="w-4 h-4 text-slate-400" />
+                    <span className="text-sm font-medium text-slate-700">Business Info</span>
+                  </div>
+                  {clientInfoModal.user.companyName && (
+                    <p className="font-medium text-slate-900 mb-1">{clientInfoModal.user.companyName}</p>
+                  )}
+                  {clientInfoModal.user.address && (
+                    <div className="text-sm text-slate-600">
+                      <p>{clientInfoModal.user.address}</p>
+                      {(clientInfoModal.user.city || clientInfoModal.user.state || clientInfoModal.user.zipCode) && (
+                        <p>{clientInfoModal.user.city}{clientInfoModal.user.city && clientInfoModal.user.state ? ', ' : ''}{clientInfoModal.user.state} {clientInfoModal.user.zipCode}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Bank Info */}
+              {(clientInfoModal.user.bankName || clientInfoModal.user.bankRouting || clientInfoModal.user.bankAccount) && (
+                <div className="p-4 bg-slate-50 rounded-xl">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CreditCard className="w-4 h-4 text-slate-400" />
+                    <span className="text-sm font-medium text-slate-700">Payment Info</span>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    {clientInfoModal.user.bankName && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Bank:</span>
+                        <span className="font-medium text-slate-900">{clientInfoModal.user.bankName}</span>
+                      </div>
+                    )}
+                    {clientInfoModal.user.bankRouting && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Routing:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-medium text-slate-900">{clientInfoModal.user.bankRouting}</span>
+                          <button onClick={() => copyToClipboard(clientInfoModal.user.bankRouting!, 'Routing')} className="p-1 hover:bg-slate-200 rounded">
+                            <Copy className="w-3 h-3 text-slate-400" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {clientInfoModal.user.bankAccount && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Account:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-medium text-slate-900">{clientInfoModal.user.bankAccount}</span>
+                          <button onClick={() => copyToClipboard(clientInfoModal.user.bankAccount!, 'Account')} className="p-1 hover:bg-slate-200 rounded">
+                            <Copy className="w-3 h-3 text-slate-400" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {clientInfoModal.user.accountingNotes && (
+                      <div className="pt-2 mt-2 border-t border-slate-200">
+                        <span className="text-slate-500">Notes:</span>
+                        <p className="text-slate-700 mt-1">{clientInfoModal.user.accountingNotes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* No info message */}
+              {!clientInfoModal.user.companyName && !clientInfoModal.user.address && !clientInfoModal.user.bankName && (
+                <div className="p-4 bg-slate-50 rounded-xl text-center text-slate-500 text-sm">
+                  No business or payment info on file
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6">
+              <Button variant="outline" className="w-full" onClick={() => setClientInfoModal(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Fulfill Modal */}
       {fulfillModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -163,11 +296,34 @@ export default function AdminCommitmentsPage() {
                   <p className="text-sm text-slate-500">{fulfillModal.quantity} units</p>
                 </div>
               </div>
-              <div className="text-sm text-slate-600">
-                <p><strong>Vendor:</strong> {fulfillModal.user.firstName} {fulfillModal.user.lastName} (U-{String(fulfillModal.user.vendorNumber).padStart(5, "0")})</p>
+              <div className="text-sm text-slate-600 space-y-1">
+                <p className="flex items-center gap-2">
+                  <strong>Vendor:</strong> {fulfillModal.user.firstName} {fulfillModal.user.lastName} (U-{String(fulfillModal.user.vendorNumber).padStart(5, "0")})
+                  {fulfillModal.user.isExclusiveMember && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-semibold">
+                      <Star className="w-2.5 h-2.5" />
+                      VIP
+                    </span>
+                  )}
+                </p>
                 <p><strong>Warehouse:</strong> {fulfillModal.warehouse}</p>
+                {fulfillModal.isVipPricing && fulfillModal.payoutRate && (
+                  <p className="flex items-center gap-1 text-amber-700">
+                    <Star className="w-3 h-3" />
+                    <strong>VIP Rate:</strong> ${Number(fulfillModal.payoutRate).toFixed(2)}/unit
+                  </p>
+                )}
                 {fulfillModal.tracking && <p><strong>Tracking:</strong> {fulfillModal.tracking.trackingNumber}</p>}
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 w-full"
+                onClick={() => { setClientInfoModal(fulfillModal); }}
+              >
+                <User className="w-3 h-3 mr-1" />
+                View Client Info
+              </Button>
             </div>
 
             {/* Invoice URL Input */}
@@ -341,7 +497,15 @@ export default function AdminCommitmentsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div>
-                          <p className="font-medium text-slate-900 text-sm">{commitment.user.firstName} {commitment.user.lastName}</p>
+                          <p className="font-medium text-slate-900 text-sm flex items-center gap-1.5">
+                            {commitment.user.firstName} {commitment.user.lastName}
+                            {commitment.user.isExclusiveMember && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-semibold">
+                                <Star className="w-2.5 h-2.5" />
+                                VIP
+                              </span>
+                            )}
+                          </p>
                           <p className="text-xs text-slate-500 font-mono">{vendorId}</p>
                         </div>
                       </td>
@@ -369,13 +533,29 @@ export default function AdminCommitmentsPage() {
                         <span className="text-sm font-medium text-slate-900">{commitment.warehouse}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm font-medium text-slate-900">{commitment.quantity}</span>
+                        <div>
+                          <span className="text-sm font-medium text-slate-900">{commitment.quantity}</span>
+                          {commitment.isVipPricing && commitment.payoutRate && (
+                            <p className="text-[10px] text-amber-600 font-medium flex items-center gap-0.5">
+                              <Star className="w-2.5 h-2.5" />
+                              ${Number(commitment.payoutRate).toFixed(0)}/ea
+                            </p>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <Badge className={status.color}>{status.label}</Badge>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs"
+                            onClick={() => setClientInfoModal(commitment)}
+                          >
+                            <User className="w-3 h-3" />
+                          </Button>
                           {canFulfill && (
                             <Button 
                               variant="purple" 

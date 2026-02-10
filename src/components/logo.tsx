@@ -8,7 +8,7 @@ interface LogoProps {
   href?: string;
 }
 
-export function Logo({ className, size = "md", showText = true, href = "/" }: LogoProps) {
+export function Logo({ className, size = "md", showText = true, href }: LogoProps) {
   const sizes = {
     sm: "w-8 h-8",
     md: "w-10 h-10",
@@ -21,8 +21,8 @@ export function Logo({ className, size = "md", showText = true, href = "/" }: Lo
     lg: "text-2xl",
   };
 
-  return (
-    <Link href={href} className={cn("flex items-center gap-3 hover:opacity-90 transition-opacity", className)}>
+  const content = (
+    <>
       {/* Crown Icon */}
       <div
         className={cn(
@@ -69,6 +69,20 @@ export function Logo({ className, size = "md", showText = true, href = "/" }: Lo
           </span>
         </div>
       )}
-    </Link>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={cn("flex items-center gap-3 hover:opacity-90 transition-opacity", className)}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className={cn("flex items-center gap-3", className)}>
+      {content}
+    </div>
   );
 }

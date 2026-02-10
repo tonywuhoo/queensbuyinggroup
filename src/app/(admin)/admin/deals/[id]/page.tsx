@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, DollarSign, Package, Clock, Tag, Loader2, ImageIcon, Star } from "lucide-react";
+import { ArrowLeft, DollarSign, Package, Clock, Tag, Loader2, ImageIcon, Star, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +21,13 @@ interface Deal {
   status: string;
   isExclusive?: boolean;
   exclusivePrice?: number;
+  linkAmazon?: string;
+  linkBestBuy?: string;
+  linkWalmart?: string;
+  linkTarget?: string;
+  linkHomeDepot?: string;
+  linkLowes?: string;
+  linkOther?: string;
 }
 
 export default function EditDealPage() {
@@ -44,6 +51,13 @@ export default function EditDealPage() {
     status: "DRAFT",
     isExclusive: false,
     exclusivePrice: "",
+    linkAmazon: "",
+    linkBestBuy: "",
+    linkWalmart: "",
+    linkTarget: "",
+    linkHomeDepot: "",
+    linkLowes: "",
+    linkOther: "",
   });
 
   useEffect(() => {
@@ -66,6 +80,13 @@ export default function EditDealPage() {
               status: deal.status,
               isExclusive: deal.isExclusive || false,
               exclusivePrice: deal.exclusivePrice ? String(deal.exclusivePrice) : "",
+              linkAmazon: deal.linkAmazon || "",
+              linkBestBuy: deal.linkBestBuy || "",
+              linkWalmart: deal.linkWalmart || "",
+              linkTarget: deal.linkTarget || "",
+              linkHomeDepot: deal.linkHomeDepot || "",
+              linkLowes: deal.linkLowes || "",
+              linkOther: deal.linkOther || "",
             });
           }
         }
@@ -101,6 +122,13 @@ export default function EditDealPage() {
           status: formData.status,
           isExclusive: formData.isExclusive,
           exclusivePrice: formData.exclusivePrice ? parseFloat(formData.exclusivePrice) : null,
+          linkAmazon: formData.linkAmazon || null,
+          linkBestBuy: formData.linkBestBuy || null,
+          linkWalmart: formData.linkWalmart || null,
+          linkTarget: formData.linkTarget || null,
+          linkHomeDepot: formData.linkHomeDepot || null,
+          linkLowes: formData.linkLowes || null,
+          linkOther: formData.linkOther || null,
         })
       });
 
@@ -394,6 +422,121 @@ export default function EditDealPage() {
                     {status}
                   </button>
                 ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Retail Links */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <LinkIcon className="w-4 h-4 text-indigo-600" />
+            Retail Links
+          </h2>
+          <p className="text-sm text-slate-500 mb-4">Add product links for each retailer (optional)</p>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="linkAmazon" className="flex items-center gap-2">
+                  <span className="text-lg">🛒</span> Amazon
+                </Label>
+                <Input
+                  id="linkAmazon"
+                  type="url"
+                  value={formData.linkAmazon}
+                  onChange={(e) => setFormData({ ...formData, linkAmazon: e.target.value })}
+                  placeholder="https://amazon.com/..."
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="linkBestBuy" className="flex items-center gap-2">
+                  <span className="text-lg">🏷️</span> Best Buy
+                </Label>
+                <Input
+                  id="linkBestBuy"
+                  type="url"
+                  value={formData.linkBestBuy}
+                  onChange={(e) => setFormData({ ...formData, linkBestBuy: e.target.value })}
+                  placeholder="https://bestbuy.com/..."
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="linkWalmart" className="flex items-center gap-2">
+                  <span className="text-lg">🔵</span> Walmart
+                </Label>
+                <Input
+                  id="linkWalmart"
+                  type="url"
+                  value={formData.linkWalmart}
+                  onChange={(e) => setFormData({ ...formData, linkWalmart: e.target.value })}
+                  placeholder="https://walmart.com/..."
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="linkTarget" className="flex items-center gap-2">
+                  <span className="text-lg">🎯</span> Target
+                </Label>
+                <Input
+                  id="linkTarget"
+                  type="url"
+                  value={formData.linkTarget}
+                  onChange={(e) => setFormData({ ...formData, linkTarget: e.target.value })}
+                  placeholder="https://target.com/..."
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="linkHomeDepot" className="flex items-center gap-2">
+                  <span className="text-lg">🧰</span> Home Depot
+                </Label>
+                <Input
+                  id="linkHomeDepot"
+                  type="url"
+                  value={formData.linkHomeDepot}
+                  onChange={(e) => setFormData({ ...formData, linkHomeDepot: e.target.value })}
+                  placeholder="https://homedepot.com/..."
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="linkLowes" className="flex items-center gap-2">
+                  <span className="text-lg">🔧</span> Lowe's
+                </Label>
+                <Input
+                  id="linkLowes"
+                  type="url"
+                  value={formData.linkLowes}
+                  onChange={(e) => setFormData({ ...formData, linkLowes: e.target.value })}
+                  placeholder="https://lowes.com/..."
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="linkOther" className="flex items-center gap-2">
+                  <span className="text-lg">🔗</span> Other
+                </Label>
+                <Input
+                  id="linkOther"
+                  type="url"
+                  value={formData.linkOther}
+                  onChange={(e) => setFormData({ ...formData, linkOther: e.target.value })}
+                  placeholder="https://..."
+                  className="mt-1"
+                />
               </div>
             </div>
           </div>

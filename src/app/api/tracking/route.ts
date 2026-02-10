@@ -57,8 +57,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate carrier
-    if (!["FEDEX", "UPS", "USPS"].includes(carrier)) {
-      return errorResponse("Invalid carrier. Must be FEDEX, UPS, or USPS");
+    if (!["FEDEX", "UPS", "USPS", "DHL"].includes(carrier)) {
+      return errorResponse("Invalid carrier. Must be FEDEX, UPS, USPS, or DHL");
     }
 
     // Check commitment belongs to user

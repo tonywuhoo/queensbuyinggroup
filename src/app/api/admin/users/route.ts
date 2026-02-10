@@ -126,7 +126,7 @@ export async function PUT(request: NextRequest) {
     if (error) return errorResponse(error, 403);
 
     const body = await request.json();
-    const { userId, role } = body;
+    const { userId, authId, role, previousRole, revokeSession } = body;
 
     if (!userId || !role) {
       return errorResponse("userId and role required");
@@ -136,12 +136,39 @@ export async function PUT(request: NextRequest) {
       return errorResponse("Invalid role");
     }
 
+    // Update the user's role in the database
     const user = await db.profile.update({
       where: { id: userId },
       data: { role },
     });
 
-    return jsonResponse(user);
+    // If demoting from admin, revoke their sessions
+    if (revokeSession && authId && previousRole === "ADMIN" && role !== "ADMIN") {
+      try {
+        const { createAdminClient } = await import("@/lib/supabase/server");
+        const adminClient = createAdminClient();
+        
+        // Sign out user from all sessions
+        const { error: signOutError } = await adminClient.auth.admin.signOut(authId);
+        
+        if (signOutError) {
+          console.error("Failed to revoke sessions:", signOutError);
+          // Don't fail the request, just log the error
+        } else {
+          console.log(`Revoked all sessions for user ${authId} (demoted from ADMIN to ${role})`);
+        }
+        
+        // Also update user metadata to reflect new role
+        await adminClient.auth.admin.updateUserById(authId, {
+          user_metadata: { role }
+        });
+      } catch (revokeError) {
+        console.error("Error revoking session:", revokeError);
+        // Don't fail the request, role update succeeded
+      }
+    }
+
+    return jsonResponse({ ...user, sessionsRevoked: revokeSession && previousRole === "ADMIN" });
   } catch (e: any) {
     console.error("PUT /api/admin/users error:", e);
     return errorResponse(e.message, 500);

@@ -4,17 +4,36 @@
  * Sends deal notifications to the Discord bot webhook server.
  */
 
+interface RetailLink {
+  name: string;
+  url: string;
+  emoji: string;
+}
+
 interface DealWebhookPayload {
+  // Required
   item: string;
-  price?: string;
-  exclusive_price?: string;
-  original_price?: string;
-  discount?: string;
-  url?: string;
-  image_url?: string;
-  store?: string;
-  category?: string;
+  buying_group: string; // Standardized: "Queens Buying Group"
+  
+  // Pricing
+  price?: string;           // Payout price
+  exclusive_price?: string; // VIP payout price
+  retail_price?: string;    // Original retail price
+  profit?: string;          // Profit percentage
+  
+  // Deal details
   description?: string;
+  vendor_limit?: number;
+  free_label_min?: number;
+  deadline?: string;
+  
+  // Links
+  url?: string;             // Commit page URL
+  image_url?: string;
+  retail_links?: RetailLink[];
+  
+  // Metadata
+  deal_id?: string;
   timestamp?: string;
   vendor_limit?: number;
   free_label_min?: number;
@@ -87,43 +106,99 @@ export function formatDealForDiscord(
     limitPerVendor?: number | null;
     freeLabelMin?: number | null;
     deadline?: Date | string | null;
+    linkAmazon?: string | null;
+    linkBestBuy?: string | null;
+    linkWalmart?: string | null;
+    linkTarget?: string | null;
+    linkHomeDepot?: string | null;
+    linkLowes?: string | null;
+    linkOther?: string | null;
   }
 ): DealWebhookPayload {
-  const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://cashoutqueens.com';
+  const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://www.queensbuyinggroup.com';
   const dealUrl = `${websiteUrl}/dashboard/deals/${deal.id}`;
 
   // Convert Prisma Decimal to number if needed
   const retailPrice = typeof deal.retailPrice === 'number' ? deal.retailPrice : Number(deal.retailPrice);
   const payout = typeof deal.payout === 'number' ? deal.payout : Number(deal.payout);
 
-  // Calculate discount percentage
-  let discount: string | undefined;
-  if (retailPrice > payout) {
-    const discountPercent = Math.round(((retailPrice - payout) / retailPrice) * 100);
-    discount = `${discountPercent}% off`;
+  // Exclusive price if applicable
+  let exclusivePriceStr: string | undefined;
+  let exclusiveNum: number | undefined;
+  if (deal.isExclusive && deal.exclusivePrice) {
+    exclusiveNum = typeof deal.exclusivePrice === 'number' ? deal.exclusivePrice : Number(deal.exclusivePrice);
+    exclusivePriceStr = `$${exclusiveNum.toFixed(2)}`;
   }
 
-  // Determine exclusive vs regular price
-  let exclusivePriceStr: string | undefined;
-  const price = `$${payout.toFixed(2)}`;
+  // Calculate profit percentage using the BEST payout (VIP if available, otherwise regular)
+  // Formula: (payout - retail) / retail * 100
+  let profit: string | undefined;
+  const effectivePayout = exclusiveNum || payout;
+  if (retailPrice > 0 && effectivePayout > 0) {
+    const profitPercent = ((effectivePayout - retailPrice) / retailPrice) * 100;
+    // Round to 1 decimal place like the website
+    const rounded = Math.round(profitPercent * 10) / 10;
+    profit = rounded > 0 ? `+${rounded}%` : `${rounded}%`;
+  }
 
-  // If deal has exclusive pricing, include it
-  if (deal.isExclusive && deal.exclusivePrice) {
-    const exclusiveNum = typeof deal.exclusivePrice === 'number' ? deal.exclusivePrice : Number(deal.exclusivePrice);
-    exclusivePriceStr = `$${exclusiveNum.toFixed(2)}`;
+  // Build retail links array
+  const retailLinks: RetailLink[] = [];
+  if (deal.linkAmazon) {
+    retailLinks.push({ name: 'Amazon', url: deal.linkAmazon, emoji: '📦' });
+  }
+  if (deal.linkBestBuy) {
+    retailLinks.push({ name: 'Best Buy', url: deal.linkBestBuy, emoji: '🟡' });
+  }
+  if (deal.linkWalmart) {
+    retailLinks.push({ name: 'Walmart', url: deal.linkWalmart, emoji: '🔵' });
+  }
+  if (deal.linkTarget) {
+    retailLinks.push({ name: 'Target', url: deal.linkTarget, emoji: '🎯' });
+  }
+  if (deal.linkHomeDepot) {
+    retailLinks.push({ name: 'Home Depot', url: deal.linkHomeDepot, emoji: '🧰' });
+  }
+  if (deal.linkLowes) {
+    retailLinks.push({ name: "Lowe's", url: deal.linkLowes, emoji: '🔧' });
+  }
+  if (deal.linkOther) {
+    retailLinks.push({ name: 'Other', url: deal.linkOther, emoji: '🔗' });
+  }
+
+  // Format deadline
+  let deadlineStr: string | undefined;
+  if (deal.deadline) {
+    const deadlineDate = typeof deal.deadline === 'string' ? new Date(deal.deadline) : deal.deadline;
+    deadlineStr = deadlineDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
   }
 
   return {
     item: deal.title,
-    price,
+    buying_group: 'Queens Buying Group', // Standardized name
+    
+    // Pricing
+    price: `$${payout.toFixed(2)}`,
     exclusive_price: exclusivePriceStr,
-    original_price: `$${retailPrice.toFixed(2)}`,
-    discount,
+    retail_price: `$${retailPrice.toFixed(2)}`,
+    profit,
+    
+    // Deal details
+    description: deal.description || undefined,
+    vendor_limit: deal.limitPerVendor || undefined,
+    free_label_min: deal.freeLabelMin || undefined,
+    deadline: deadlineStr,
+    
+    // Links
     url: dealUrl,
     image_url: deal.imageUrl || undefined,
-    store: 'Cash Out Queens',
-    category: 'Deals',
-    description: deal.description || undefined,
+    retail_links: retailLinks.length > 0 ? retailLinks : undefined,
+    
+    // Metadata
+    deal_id: `D-${String(deal.dealNumber).padStart(5, '0')}`,
     timestamp: new Date().toISOString(),
     vendor_limit: deal.limitPerVendor ?? undefined,
     free_label_min: deal.freeLabelMin ?? undefined,

@@ -66,7 +66,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log("Creating deal with data:", body);
 
-    const { title, description, imageUrl, retailPrice, payout, limitPerVendor, freeLabelMin, deadline, status, isExclusive, exclusivePrice } = body;
+    const { 
+      title, description, imageUrl, retailPrice, payout, limitPerVendor, freeLabelMin, deadline, status, 
+      isExclusive, exclusivePrice,
+      linkAmazon, linkBestBuy, linkWalmart, linkTarget, linkHomeDepot, linkLowes, linkOther
+    } = body;
 
     if (!title || retailPrice === undefined || payout === undefined) {
       return errorResponse("Missing required fields: title, retailPrice, payout");
@@ -94,6 +98,14 @@ export async function POST(request: NextRequest) {
         createdById: profile.id,
         isExclusive: isExclusive || false,
         exclusivePrice: exclusivePrice ? Number(exclusivePrice) : null,
+        // Retail links
+        linkAmazon: linkAmazon || null,
+        linkBestBuy: linkBestBuy || null,
+        linkWalmart: linkWalmart || null,
+        linkTarget: linkTarget || null,
+        linkHomeDepot: linkHomeDepot || null,
+        linkLowes: linkLowes || null,
+        linkOther: linkOther || null,
       }
     });
 
@@ -130,7 +142,11 @@ export async function PUT(request: NextRequest) {
     if (error) return errorResponse(error, 403);
 
     const body = await request.json();
-    const { id, isExclusive, exclusivePrice, ...updateData } = body;
+    const { 
+      id, isExclusive, exclusivePrice, 
+      linkAmazon, linkBestBuy, linkWalmart, linkTarget, linkHomeDepot, linkLowes, linkOther,
+      ...updateData 
+    } = body;
 
     if (!id) {
       return errorResponse("Deal ID required");
@@ -163,6 +179,14 @@ export async function PUT(request: NextRequest) {
         ...updateData,
         isExclusive: isExclusive ?? currentDeal.isExclusive,
         exclusivePrice: exclusivePrice !== undefined ? (exclusivePrice ? Number(exclusivePrice) : null) : currentDeal.exclusivePrice,
+        // Retail links - only update if provided
+        ...(linkAmazon !== undefined && { linkAmazon: linkAmazon || null }),
+        ...(linkBestBuy !== undefined && { linkBestBuy: linkBestBuy || null }),
+        ...(linkWalmart !== undefined && { linkWalmart: linkWalmart || null }),
+        ...(linkTarget !== undefined && { linkTarget: linkTarget || null }),
+        ...(linkHomeDepot !== undefined && { linkHomeDepot: linkHomeDepot || null }),
+        ...(linkLowes !== undefined && { linkLowes: linkLowes || null }),
+        ...(linkOther !== undefined && { linkOther: linkOther || null }),
       },
     });
 
@@ -214,7 +238,10 @@ export async function DELETE(request: NextRequest) {
               where: { status: { not: "CANCELLED" } }
             } 
           } 
-        } 
+        },
+        commitments: {
+          select: { id: true }
+        }
       }
     });
 
@@ -226,6 +253,38 @@ export async function DELETE(request: NextRequest) {
       return errorResponse("Cannot delete deal with active commitments. Set status to CLOSED instead.");
     }
 
+    // Get all commitment IDs for this deal (including cancelled)
+    const commitmentIds = deal.commitments.map(c => c.id);
+
+    // Delete in order to respect foreign key constraints
+    // 1. Delete invoices linked to commitments
+    if (commitmentIds.length > 0) {
+      await db.invoice.deleteMany({
+        where: { commitmentId: { in: commitmentIds } }
+      });
+
+      // 2. Delete tracking records linked to commitments
+      await db.tracking.deleteMany({
+        where: { commitmentId: { in: commitmentIds } }
+      });
+
+      // 3. Delete label requests linked to commitments
+      await db.labelRequest.deleteMany({
+        where: { commitmentId: { in: commitmentIds } }
+      });
+
+      // 4. Delete all commitments (including cancelled ones)
+      await db.commitment.deleteMany({
+        where: { dealId: id }
+      });
+    }
+
+    // 5. Delete label requests linked directly to deal (if any orphaned)
+    await db.labelRequest.deleteMany({
+      where: { dealId: id }
+    });
+
+    // 6. Finally delete the deal
     await db.deal.delete({ where: { id } });
 
     return jsonResponse({ success: true });

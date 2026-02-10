@@ -83,6 +83,17 @@ model Profile {
   // Vendor ID: Auto-incrementing number, displayed as U-XXXXX
   vendorNumber  Int      @unique @default(autoincrement())
   
+  // Business / Payment Info (optional)
+  companyName   String?
+  address       String?
+  city          String?
+  state         String?
+  zipCode       String?
+  bankName      String?
+  bankRouting   String?
+  bankAccount   String?
+  accountingNotes String?
+  
   // Discord integration (for exclusive deals)
   discordId               String?   @unique
   discordUsername         String?
@@ -125,6 +136,16 @@ model Deal {
   isExclusive     Boolean       @default(false)
   exclusivePrice  Decimal?      @db.Decimal(10, 2)
   
+  // Retail links
+  linkAmazon      String?
+  linkBestBuy     String?
+  linkWalmart     String?
+  linkTarget      String?
+  linkHomeDepot   String?
+  linkLowes       String?
+  linkOther       String?
+  linkOtherName   String?       // Custom name for "Other" link
+  
   // Limits
   maxQuantity     Int?          // Total max
   limitPerVendor  Int?          // Per vendor limit
@@ -154,6 +175,10 @@ model Commitment {
   status          CommitmentStatus @default(PENDING)
   deliveryMethod  DeliveryMethod
   warehouse       String           // MA, NJ, CT, DE
+  
+  // Pricing - locked in at commitment time
+  payoutRate      Decimal?         @db.Decimal(10, 2)  // The payout per unit (regular or VIP)
+  isVipPricing    Boolean          @default(false)     // Whether VIP pricing was used
   
   // Timestamps
   createdAt       DateTime         @default(now())

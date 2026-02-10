@@ -30,6 +30,13 @@ export async function GET(
         createdAt: true,
         isExclusive: true,
         exclusivePrice: true,
+        linkAmazon: true,
+        linkBestBuy: true,
+        linkWalmart: true,
+        linkTarget: true,
+        linkHomeDepot: true,
+        linkLowes: true,
+        linkOther: true,
       }
     });
 

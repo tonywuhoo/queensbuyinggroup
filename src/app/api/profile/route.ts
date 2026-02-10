@@ -26,6 +26,16 @@ export async function GET() {
       vendorId,
       vendorNumber: profile.vendorNumber,
       createdAt: profile.createdAt,
+      // Business / Payment info
+      companyName: profile.companyName,
+      address: profile.address,
+      city: profile.city,
+      state: profile.state,
+      zipCode: profile.zipCode,
+      bankName: profile.bankName,
+      bankRouting: profile.bankRouting,
+      bankAccount: profile.bankAccount,
+      accountingNotes: profile.accountingNotes,
       // Discord integration
       discordId: profile.discordId,
       discordUsername: profile.discordUsername,
@@ -49,7 +59,11 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { firstName, lastName, phone } = body;
+    const { 
+      firstName, lastName, phone,
+      companyName, address, city, state, zipCode,
+      bankName, bankRouting, bankAccount, accountingNotes 
+    } = body;
 
     // Validate input
     if (!firstName || !lastName) {
@@ -63,6 +77,15 @@ export async function PATCH(request: NextRequest) {
         firstName,
         lastName,
         phone: phone || null,
+        companyName: companyName || null,
+        address: address || null,
+        city: city || null,
+        state: state || null,
+        zipCode: zipCode || null,
+        bankName: bankName || null,
+        bankRouting: bankRouting || null,
+        bankAccount: bankAccount || null,
+        accountingNotes: accountingNotes || null,
       },
     });
 
@@ -77,6 +100,15 @@ export async function PATCH(request: NextRequest) {
       role: updatedProfile.role,
       vendorId,
       vendorNumber: updatedProfile.vendorNumber,
+      companyName: updatedProfile.companyName,
+      address: updatedProfile.address,
+      city: updatedProfile.city,
+      state: updatedProfile.state,
+      zipCode: updatedProfile.zipCode,
+      bankName: updatedProfile.bankName,
+      bankRouting: updatedProfile.bankRouting,
+      bankAccount: updatedProfile.bankAccount,
+      accountingNotes: updatedProfile.accountingNotes,
     });
   } catch (e: any) {
     console.error("PATCH /api/profile error:", e);

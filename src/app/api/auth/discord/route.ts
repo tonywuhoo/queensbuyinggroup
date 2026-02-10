@@ -8,7 +8,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Discord not configured" }, { status: 500 });
   }
 
-  const origin = request.nextUrl.origin;
+  // Use explicit public URL to avoid Railway/Vercel internal URLs
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_WEBSITE_URL || "https://www.queensbuyinggroup.com";
   const redirectUri = `${origin}/api/auth/discord/callback`;
   
   // Discord OAuth URL with required scopes

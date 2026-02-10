@@ -50,6 +50,13 @@ export async function GET(request: NextRequest) {
         createdAt: true,
         isExclusive: true,
         exclusivePrice: true,
+        linkAmazon: true,
+        linkBestBuy: true,
+        linkWalmart: true,
+        linkTarget: true,
+        linkHomeDepot: true,
+        linkLowes: true,
+        linkOther: true,
         _count: {
           select: { commitments: true }
         }
