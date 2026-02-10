@@ -35,6 +35,7 @@ interface DealWebhookPayload {
   // Metadata
   deal_id?: string;
   timestamp?: string;
+  buying_group_slug?: string;
 }
 
 /**
@@ -197,5 +198,6 @@ export function formatDealForDiscord(
     // Metadata
     deal_id: `D-${String(deal.dealNumber).padStart(5, '0')}`,
     timestamp: new Date().toISOString(),
+    buying_group_slug: 'queens',
   };
 }
