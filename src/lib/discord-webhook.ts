@@ -197,8 +197,5 @@ export function formatDealForDiscord(
     // Metadata
     deal_id: `D-${String(deal.dealNumber).padStart(5, '0')}`,
     timestamp: new Date().toISOString(),
-    vendor_limit: deal.limitPerVendor ?? undefined,
-    free_label_min: deal.freeLabelMin ?? undefined,
-    deadline: deal.deadline ? new Date(deal.deadline).toISOString() : undefined,
   };
 }
