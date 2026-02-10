@@ -16,6 +16,9 @@ interface DealWebhookPayload {
   category?: string;
   description?: string;
   timestamp?: string;
+  vendor_limit?: number;
+  free_label_min?: number;
+  deadline?: string;
 }
 
 /**
@@ -81,6 +84,9 @@ export function formatDealForDiscord(
     dealNumber: number;
     isExclusive?: boolean;
     exclusivePrice?: any; // Prisma Decimal or number
+    limitPerVendor?: number | null;
+    freeLabelMin?: number | null;
+    deadline?: Date | string | null;
   }
 ): DealWebhookPayload {
   const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://cashoutqueens.com';
@@ -119,5 +125,8 @@ export function formatDealForDiscord(
     category: 'Deals',
     description: deal.description || undefined,
     timestamp: new Date().toISOString(),
+    vendor_limit: deal.limitPerVendor ?? undefined,
+    free_label_min: deal.freeLabelMin ?? undefined,
+    deadline: deal.deadline ? new Date(deal.deadline).toISOString() : undefined,
   };
 }
