@@ -23,33 +23,50 @@ interface Tracking {
   };
 }
 
+interface Warehouse {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+}
+
 export default function TrackingPage() {
   const [trackings, setTrackings] = useState<Tracking[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [warehouseFilter, setWarehouseFilter] = useState<string>("ALL");
-  const [carrierFilter, setCarrierFilter] = useState<string>("ALL");
 
   useEffect(() => {
-    const fetchTrackings = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch('/api/tracking');
-        if (res.ok) {
-          const data = await res.json();
+        const [trackingRes, warehousesRes] = await Promise.all([
+          fetch('/api/tracking'),
+          fetch('/api/warehouses?all=true'),
+        ]);
+        if (trackingRes.ok) {
+          const data = await trackingRes.json();
           setTrackings(data);
         }
+        if (warehousesRes.ok) {
+          const data = await warehousesRes.json();
+          setWarehouses(data);
+        }
       } catch (e) {
-        console.error('Error fetching trackings:', e);
+        console.error('Error fetching data:', e);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchTrackings();
+    fetchData();
   }, []);
+
+  // Show warehouses that are active OR referenced by the user's trackings
+  const trackingWarehouseCodes = new Set(trackings.map(t => t.commitment.warehouse));
+  const displayWarehouses = warehouses.filter(wh => wh.isActive || trackingWarehouseCodes.has(wh.code));
 
   const filteredTrackings = trackings.filter((t) => {
     if (warehouseFilter !== "ALL" && t.commitment.warehouse !== warehouseFilter) return false;
-    if (carrierFilter !== "ALL" && t.carrier !== carrierFilter) return false;
     return true;
   });
 
@@ -91,42 +108,34 @@ export default function TrackingPage() {
         <p className="text-slate-500 text-sm">{trackings.length} shipments tracked</p>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        {/* Warehouse Filter */}
-        <div className="flex gap-2 overflow-x-auto">
-          {["ALL", "MA", "NJ", "CT", "DE"].map((wh) => (
+      {/* Warehouse Filter */}
+      {displayWarehouses.length > 0 && (
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+          <button
+            onClick={() => setWarehouseFilter("ALL")}
+            className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+              warehouseFilter === "ALL"
+                ? "bg-queens-purple text-white"
+                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            All
+          </button>
+          {displayWarehouses.map((wh) => (
             <button
-              key={wh}
-              onClick={() => setWarehouseFilter(wh)}
+              key={wh.code}
+              onClick={() => setWarehouseFilter(wh.code)}
               className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                warehouseFilter === wh
+                warehouseFilter === wh.code
                   ? "bg-queens-purple text-white"
-                  : "bg-white border border-slate-200 text-slate-600"
+                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
-              {wh === "ALL" ? "All" : wh}
+              {wh.code}{!wh.isActive && <span className="ml-1 text-xs opacity-60">(inactive)</span>}
             </button>
           ))}
         </div>
-
-        {/* Carrier Filter */}
-        <div className="flex gap-2">
-          {["ALL", "FEDEX", "UPS", "USPS"].map((c) => (
-            <button
-              key={c}
-              onClick={() => setCarrierFilter(c)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                carrierFilter === c
-                  ? "bg-slate-700 text-white"
-                  : "bg-white border border-slate-200 text-slate-600"
-              }`}
-            >
-              {c === "ALL" ? "All Carriers" : c}
-            </button>
-          ))}
-        </div>
-      </div>
+      )}
 
       {/* Trackings List */}
       {filteredTrackings.length > 0 ? (
