@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Package, Clock, CheckCircle, X, Send, AlertTriangle, MapPin, Truck } from "lucide-react";
+import { FileText, Package, Clock, CheckCircle, X, Send, AlertTriangle, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Commitment {
@@ -57,7 +57,6 @@ interface LabelRequest {
 
 export default function LabelsPage() {
   const [commitments, setCommitments] = useState<Commitment[]>([]);
-  const [needsSetupCommitments, setNeedsSetupCommitments] = useState<Commitment[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [labelRequests, setLabelRequests] = useState<LabelRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,17 +82,12 @@ export default function LabelsPage() {
       
       if (commitmentsRes.ok) {
         const data = await commitmentsRes.json();
-        // Show shipping commitments that are pending and don't have label requests
+        // Show all PENDING commitments without label requests
+        // (includes TBD warehouse — button will prompt for warehouse selection)
         setCommitments(data.filter((c: Commitment) => 
-          c.deliveryMethod === 'SHIP' && 
           c.status === 'PENDING' && 
-          !c.labelRequest
-        ));
-        // Also show commitments that haven't set delivery yet
-        setNeedsSetupCommitments(data.filter((c: Commitment) =>
-          c.warehouse === 'TBD' &&
-          c.status === 'PENDING' &&
-          !c.labelRequest
+          !c.labelRequest &&
+          c.deliveryMethod !== 'DROP_OFF' // Drop-offs don't need labels
         ));
       }
       
@@ -345,40 +339,7 @@ export default function LabelsPage() {
         </div>
       )}
 
-      {/* Commitments that need delivery setup */}
-      {needsSetupCommitments.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-sm font-semibold text-purple-600 mb-3 flex items-center gap-2">
-            <MapPin className="w-4 h-4" />
-            Needs Delivery Setup ({needsSetupCommitments.length})
-          </h2>
-          <div className="space-y-3">
-            {needsSetupCommitments.map((c) => (
-              <div key={c.id} className="bg-purple-50 rounded-xl border border-purple-200 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-slate-900">{c.deal.title}</p>
-                    <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
-                      <span>Qty: {c.quantity}</span>
-                      <span className="text-purple-600">No delivery method set</span>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => { setSetupCommitment(c); setSelectedWarehouse(""); }}
-                    size="sm"
-                    variant="purple"
-                  >
-                    <Truck className="w-4 h-4 mr-2" />
-                    Ship & Request Label
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Available Commitments (already set to SHIP) */}
+      {/* Available Commitments for Label Request */}
       {commitments.length > 0 && (
         <div className="mb-8">
           <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
@@ -388,15 +349,20 @@ export default function LabelsPage() {
           <div className="space-y-3">
             {commitments.map((c) => {
               const qualifies = c.deal.freeLabelMin && c.quantity >= c.deal.freeLabelMin;
+              const needsWarehouse = c.warehouse === 'TBD';
               
               return (
-                <div key={c.id} className="bg-white rounded-xl border border-slate-200 p-4">
+                <div key={c.id} className={`rounded-xl border p-4 ${needsWarehouse ? "bg-purple-50 border-purple-200" : "bg-white border-slate-200"}`}>
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium text-slate-900">{c.deal.title}</p>
                       <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
                         <span>Qty: {c.quantity}</span>
-                        <span>Warehouse: {c.warehouse}</span>
+                        {needsWarehouse ? (
+                          <span className="text-purple-600">No warehouse set</span>
+                        ) : (
+                          <span>Warehouse: {c.warehouse}</span>
+                        )}
                         {qualifies ? (
                           <span className="text-green-600">✓ Free label</span>
                         ) : c.deal.freeLabelMin && (
@@ -406,14 +372,26 @@ export default function LabelsPage() {
                         )}
                       </div>
                     </div>
-                    <Button
-                      onClick={() => handleRequestLabel(c.id)}
-                      disabled={requesting === c.id}
-                      size="sm"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      {requesting === c.id ? 'Requesting...' : 'Request Label'}
-                    </Button>
+                    {needsWarehouse ? (
+                      <Button
+                        onClick={() => { setSetupCommitment(c); setSelectedWarehouse(""); }}
+                        disabled={requesting === c.id}
+                        size="sm"
+                        variant="purple"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        Request Label
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => handleRequestLabel(c.id)}
+                        disabled={requesting === c.id}
+                        size="sm"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        {requesting === c.id ? 'Requesting...' : 'Request Label'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
@@ -520,7 +498,7 @@ export default function LabelsPage() {
         </div>
       )}
 
-      {commitments.length === 0 && needsSetupCommitments.length === 0 && labelRequests.length === 0 && (
+      {commitments.length === 0 && labelRequests.length === 0 && (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
           <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
           <p className="text-slate-500">No label requests</p>
