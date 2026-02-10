@@ -7,14 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
-const WAREHOUSES = [
-  { id: "ALL", label: "All" },
-  { id: "MA", label: "MA" },
-  { id: "NJ", label: "NJ" },
-  { id: "CT", label: "CT" },
-  { id: "DE", label: "DE" },
-  { id: "TBD", label: "Not Set" },
-];
+interface WarehouseOption {
+  id: string;
+  label: string;
+}
 
 interface Commitment {
   id: string;
@@ -70,6 +66,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 
 export default function AdminCommitmentsPage() {
   const [commitments, setCommitments] = useState<Commitment[]>([]);
+  const [warehouseOptions, setWarehouseOptions] = useState<WarehouseOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeWarehouse, setActiveWarehouse] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -94,8 +91,29 @@ export default function AdminCommitmentsPage() {
     }
   };
 
+  const fetchWarehouses = async () => {
+    try {
+      const res = await fetch('/api/warehouses?all=true');
+      if (res.ok) {
+        const data = await res.json();
+        const options: WarehouseOption[] = [
+          { id: "ALL", label: "All" },
+          ...data.map((wh: any) => ({ 
+            id: wh.code, 
+            label: wh.isActive ? wh.code : `${wh.code} (inactive)` 
+          })),
+          { id: "TBD", label: "Not Set" },
+        ];
+        setWarehouseOptions(options);
+      }
+    } catch (e) {
+      console.error('Error fetching warehouses:', e);
+    }
+  };
+
   useEffect(() => {
     fetchCommitments();
+    fetchWarehouses();
   }, []);
 
   const filteredCommitments = commitments.filter((c) => {
@@ -416,13 +434,13 @@ export default function AdminCommitmentsPage() {
       {/* Filters */}
       <div className="space-y-3 mb-6">
         {/* Warehouse Filter */}
-        <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 p-1.5 w-fit">
-          <Package className="w-4 h-4 text-slate-400 ml-2" />
-          {WAREHOUSES.map((wh) => (
+        <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 p-1.5 w-fit overflow-x-auto">
+          <Package className="w-4 h-4 text-slate-400 ml-2 flex-shrink-0" />
+          {warehouseOptions.map((wh) => (
             <button
               key={wh.id}
               onClick={() => setActiveWarehouse(wh.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
                 activeWarehouse === wh.id
                   ? "bg-slate-900 text-white"
                   : "text-slate-600 hover:bg-slate-100"

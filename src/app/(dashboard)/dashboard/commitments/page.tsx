@@ -384,34 +384,53 @@ export default function CommitmentsPage() {
               {/* Delivery Method */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Delivery Method</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => { setEditDeliveryMethod("DROP_OFF"); setEditWarehouse(""); }}
-                    className={`p-4 rounded-xl border text-left transition-all ${
-                      editDeliveryMethod === "DROP_OFF"
-                        ? "border-queens-purple bg-queens-purple/5"
-                        : "border-slate-200 hover:border-queens-purple"
-                    }`}
-                  >
-                    <MapPin className={`w-5 h-5 mb-2 ${editDeliveryMethod === "DROP_OFF" ? "text-queens-purple" : "text-slate-400"}`} />
-                    <p className="font-medium text-sm">Drop Off</p>
-                    <p className="text-xs text-slate-500">MA, NJ, CT, NY</p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setEditDeliveryMethod("SHIP"); setEditWarehouse(""); }}
-                    className={`p-4 rounded-xl border text-left transition-all ${
-                      editDeliveryMethod === "SHIP"
-                        ? "border-queens-purple bg-queens-purple/5"
-                        : "border-slate-200 hover:border-queens-purple"
-                    }`}
-                  >
-                    <Truck className={`w-5 h-5 mb-2 ${editDeliveryMethod === "SHIP" ? "text-queens-purple" : "text-slate-400"}`} />
-                    <p className="font-medium text-sm">Ship</p>
-                    <p className="text-xs text-slate-500">DE only</p>
-                  </button>
-                </div>
+                {(() => {
+                  const dropOffWarehouses = warehouses.filter(wh => wh.allowDropOff && wh.isActive);
+                  const shipWarehouses = warehouses.filter(wh => wh.allowShipping && wh.isActive);
+                  const dropOffLabel = dropOffWarehouses.length > 0 
+                    ? dropOffWarehouses.map(wh => wh.state || wh.code).join(", ") 
+                    : "No locations available";
+                  const shipLabel = shipWarehouses.length > 0
+                    ? shipWarehouses.map(wh => wh.name || wh.code).join(", ")
+                    : "No locations available";
+                  
+                  return (
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => { setEditDeliveryMethod("DROP_OFF"); setEditWarehouse(""); }}
+                        disabled={dropOffWarehouses.length === 0}
+                        className={`p-4 rounded-xl border text-left transition-all ${
+                          dropOffWarehouses.length === 0
+                            ? "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
+                            : editDeliveryMethod === "DROP_OFF"
+                              ? "border-queens-purple bg-queens-purple/5"
+                              : "border-slate-200 hover:border-queens-purple"
+                        }`}
+                      >
+                        <MapPin className={`w-5 h-5 mb-2 ${editDeliveryMethod === "DROP_OFF" ? "text-queens-purple" : "text-slate-400"}`} />
+                        <p className="font-medium text-sm">Drop Off</p>
+                        <p className="text-xs text-slate-500">{dropOffLabel}</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setEditDeliveryMethod("SHIP"); setEditWarehouse(""); }}
+                        disabled={shipWarehouses.length === 0}
+                        className={`p-4 rounded-xl border text-left transition-all ${
+                          shipWarehouses.length === 0
+                            ? "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
+                            : editDeliveryMethod === "SHIP"
+                              ? "border-queens-purple bg-queens-purple/5"
+                              : "border-slate-200 hover:border-queens-purple"
+                        }`}
+                      >
+                        <Truck className={`w-5 h-5 mb-2 ${editDeliveryMethod === "SHIP" ? "text-queens-purple" : "text-slate-400"}`} />
+                        <p className="font-medium text-sm">Ship</p>
+                        <p className="text-xs text-slate-500">{shipLabel}</p>
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Warehouse */}
