@@ -35,9 +35,6 @@ interface DealWebhookPayload {
   // Metadata
   deal_id?: string;
   timestamp?: string;
-  vendor_limit?: number;
-  free_label_min?: number;
-  deadline?: string;
 }
 
 /**
