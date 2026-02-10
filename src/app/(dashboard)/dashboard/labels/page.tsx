@@ -78,7 +78,7 @@ export default function LabelsPage() {
       const [commitmentsRes, labelsRes, warehousesRes] = await Promise.all([
         fetch('/api/commitments'),
         fetch('/api/labels'),
-        fetch('/api/warehouses')
+        fetch('/api/warehouses?all=true')
       ]);
       
       if (commitmentsRes.ok) {

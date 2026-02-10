@@ -88,7 +88,9 @@ export default function CommitmentsPage() {
 
   const fetchWarehouses = async () => {
     try {
-      const res = await fetch('/api/warehouses');
+      // Fetch ALL warehouses (including inactive) for display/filtering
+      // Active-only filtering is done in the UI for selection modals
+      const res = await fetch('/api/warehouses?all=true');
       if (res.ok) {
         const data = await res.json();
         setWarehouses(data);
@@ -103,12 +105,17 @@ export default function CommitmentsPage() {
     fetchWarehouses();
   }, []);
   
-  // Filter warehouses based on selected delivery method
+  // Filter warehouses for selection modals — only active ones
   const availableWarehouses = editDeliveryMethod 
     ? warehouses.filter(wh => 
-        editDeliveryMethod === "DROP_OFF" ? wh.allowDropOff : wh.allowShipping
+        wh.isActive && (editDeliveryMethod === "DROP_OFF" ? wh.allowDropOff : wh.allowShipping)
       )
     : [];
+  
+  // Warehouses that appear in any commitment (for filter tabs)
+  const commitmentWarehouseCodes = new Set(commitments.map(c => c.warehouse).filter(w => w !== "TBD"));
+  // Show warehouses that are either active OR referenced by a user's commitment
+  const displayWarehouses = warehouses.filter(wh => wh.isActive || commitmentWarehouseCodes.has(wh.code));
 
   const openEditModal = (commitment: Commitment) => {
     setEditingCommitment(commitment);
@@ -533,7 +540,7 @@ export default function CommitmentsPage() {
         >
           All Warehouses
         </button>
-        {warehouses.map((wh) => (
+        {displayWarehouses.map((wh) => (
           <button
             key={wh.code}
             onClick={() => setWarehouseFilter(wh.code)}
@@ -543,7 +550,7 @@ export default function CommitmentsPage() {
                 : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
             }`}
           >
-            {wh.code}
+            {wh.code}{!wh.isActive && <span className="ml-1 text-xs opacity-60">(inactive)</span>}
           </button>
         ))}
       </div>

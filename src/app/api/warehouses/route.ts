@@ -11,8 +11,9 @@ export async function GET(request: NextRequest) {
 
     const includeAll = request.nextUrl.searchParams.get("all") === "true";
 
-    // Only admins can see inactive warehouses
-    const where = (includeAll && profile!.role === "ADMIN") ? {} : { isActive: true };
+    // Any authenticated user can request all warehouses (for historical display)
+    // Active-only filtering is handled on the frontend for selection UIs
+    const where = includeAll ? {} : { isActive: true };
 
     const warehouses = await db.warehouse.findMany({
       where,
