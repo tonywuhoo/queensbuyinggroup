@@ -193,7 +193,7 @@ export default function DealDetailPage() {
                 <img 
                   src={deal.imageUrl} 
                   alt={deal.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               ) : (
                 <Package className="w-24 h-24 text-slate-200" />

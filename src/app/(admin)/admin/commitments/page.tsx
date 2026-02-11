@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Package, Filter, CheckCircle, X, FileText, ExternalLink, AlertCircle, Star, User, Building, CreditCard, Copy } from "lucide-react";
+import { Search, Package, Filter, CheckCircle, X, FileText, ExternalLink, AlertCircle, Star, User, Building, CreditCard, Copy, DollarSign } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,6 @@ interface Commitment {
     accountingNotes?: string;
   };
   deal: {
-    id: string;
     title: string;
     payout: number;
   };
@@ -76,6 +75,10 @@ export default function AdminCommitmentsPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [fulfillError, setFulfillError] = useState("");
   const [clientInfoModal, setClientInfoModal] = useState<Commitment | null>(null);
+  const [editPriceModal, setEditPriceModal] = useState<Commitment | null>(null);
+  const [editPriceValue, setEditPriceValue] = useState("");
+  const [editPriceError, setEditPriceError] = useState("");
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
 
   const fetchCommitments = async () => {
     try {
@@ -160,6 +163,38 @@ export default function AdminCommitmentsPage() {
       setFulfillError('Failed to fulfill commitment');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleEditPrice = async () => {
+    if (!editPriceModal || !editPriceValue) return;
+
+    setIsEditingPrice(true);
+    setEditPriceError("");
+    try {
+      const res = await fetch('/api/admin/commitments', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editPriceModal.id,
+          payoutRate: Number(editPriceValue),
+        })
+      });
+
+      if (res.ok) {
+        await fetchCommitments();
+        setEditPriceModal(null);
+        setEditPriceValue("");
+        setEditPriceError("");
+      } else {
+        const error = await res.json();
+        setEditPriceError(error.error || 'Failed to update payout rate');
+      }
+    } catch (e) {
+      console.error('Error updating payout rate:', e);
+      setEditPriceError('Failed to update payout rate');
+    } finally {
+      setIsEditingPrice(false);
     }
   };
 
@@ -383,6 +418,77 @@ export default function AdminCommitmentsPage() {
         </div>
       )}
 
+      {/* Edit Price Modal */}
+      {editPriceModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm relative">
+            <button onClick={() => { setEditPriceModal(null); setEditPriceError(""); }} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Edit Payout Rate</h2>
+            <p className="text-slate-500 text-sm mb-4">
+              {editPriceModal.user.firstName} {editPriceModal.user.lastName} — {editPriceModal.deal.title}
+            </p>
+
+            <div className="p-3 bg-slate-50 rounded-xl mb-4 text-sm">
+              <div className="flex justify-between mb-1">
+                <span className="text-slate-500">Current rate:</span>
+                <span className="font-semibold text-slate-900">
+                  ${Number(editPriceModal.payoutRate || editPriceModal.deal.payout).toFixed(2)}/unit
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Quantity:</span>
+                <span className="font-semibold text-slate-900">{editPriceModal.quantity}</span>
+              </div>
+              {editPriceValue && Number(editPriceValue) > 0 && (
+                <div className="flex justify-between mt-2 pt-2 border-t border-slate-200">
+                  <span className="text-slate-500">New total:</span>
+                  <span className="font-bold text-queens-purple">
+                    ${(Number(editPriceValue) * editPriceModal.quantity).toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <Label htmlFor="editPrice">New Payout Rate ($/unit)</Label>
+              <Input
+                id="editPrice"
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={editPriceValue}
+                onChange={(e) => setEditPriceValue(e.target.value)}
+                placeholder="e.g. 125.00"
+                className="mt-1"
+              />
+            </div>
+
+            {editPriceError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {editPriceError}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => { setEditPriceModal(null); setEditPriceError(""); }}>
+                Cancel
+              </Button>
+              <Button
+                variant="purple"
+                className="flex-1"
+                onClick={handleEditPrice}
+                disabled={!editPriceValue || Number(editPriceValue) <= 0 || isEditingPrice}
+              >
+                {isEditingPrice ? "Saving..." : "Update Rate"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">All Commitments</h1>
@@ -574,6 +680,20 @@ export default function AdminCommitmentsPage() {
                           >
                             <User className="w-3 h-3" />
                           </Button>
+                          {commitment.status !== "FULFILLED" && commitment.status !== "CANCELLED" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => {
+                                setEditPriceModal(commitment);
+                                setEditPriceValue(String(Number(commitment.payoutRate || commitment.deal.payout)));
+                              }}
+                            >
+                              <DollarSign className="w-3 h-3 mr-1" />
+                              Edit Price
+                            </Button>
+                          )}
                           {canFulfill && (
                             <Button 
                               variant="purple" 
