@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Edit, Trash2, Search, X, AlertTriangle, Package } from "lucide-react";
+import { Plus, Edit, Trash2, Search, X, AlertTriangle, Package, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type DealStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "EXPIRED" | "CLOSED";
@@ -38,6 +38,7 @@ export default function AdminDealsPage() {
   const [deleteModal, setDeleteModal] = useState<Deal | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [sendingWebhook, setSendingWebhook] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDeals = async () => {
@@ -87,6 +88,21 @@ export default function AdminDealsPage() {
       }
     } catch (e) {
       console.error('Error updating deal:', e);
+    }
+  };
+
+  const handleForceWebhook = async (dealId: string) => {
+    setSendingWebhook(dealId);
+    try {
+      await fetch('/api/admin/deals', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: dealId })
+      });
+    } catch (e) {
+      console.error('Error sending webhook:', e);
+    } finally {
+      setSendingWebhook(null);
     }
   };
 
@@ -301,6 +317,16 @@ export default function AdminDealsPage() {
                   <option value="EXPIRED">Expired</option>
                   <option value="CLOSED">Closed</option>
                 </select>
+                {deal.status === "ACTIVE" && (
+                  <button
+                    onClick={() => handleForceWebhook(deal.id)}
+                    disabled={sendingWebhook === deal.id}
+                    className="p-2 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors disabled:opacity-50"
+                    title="Send to Discord"
+                  >
+                    <Send className={`w-4 h-4 text-purple-600 ${sendingWebhook === deal.id ? 'animate-pulse' : ''}`} />
+                  </button>
+                )}
                 <Link
                   href={`/admin/deals/${deal.id}`}
                   className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"

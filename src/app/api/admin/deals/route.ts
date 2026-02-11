@@ -192,9 +192,8 @@ export async function PUT(request: NextRequest) {
 
     const dealId = `D-${String(deal.dealNumber).padStart(5, "0")}`;
 
-    // Notify Discord if status changed to ACTIVE
-    const statusChangedToActive = currentDeal.status !== "ACTIVE" && deal.status === "ACTIVE";
-    if (statusChangedToActive) {
+    // Notify Discord if deal is ACTIVE (new activation or update to active deal)
+    if (deal.status === "ACTIVE") {
       try {
         const { notifyDiscordWebhook, formatDealForDiscord } = await import("@/lib/discord-webhook");
         const webhookPayload = formatDealForDiscord(deal);
