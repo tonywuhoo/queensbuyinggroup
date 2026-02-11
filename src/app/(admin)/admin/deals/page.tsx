@@ -101,7 +101,7 @@ export default function AdminDealsPage() {
         body: JSON.stringify({ id: dealId })
       });
       if (res.ok) {
-        toast({ title: "Sent to Discord", description: "Webhook delivered successfully" });
+        toast({ title: "Sent to Discord", description: "Webhook delivered successfully", variant: "discord" });
       } else {
         toast({ title: "Webhook failed", description: "Failed to send to Discord", variant: "destructive" });
       }
