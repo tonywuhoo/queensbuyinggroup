@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Edit, Trash2, Search, X, AlertTriangle, Package, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 
 type DealStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "EXPIRED" | "CLOSED";
 
@@ -94,13 +95,19 @@ export default function AdminDealsPage() {
   const handleForceWebhook = async (dealId: string) => {
     setSendingWebhook(dealId);
     try {
-      await fetch('/api/admin/deals', {
+      const res = await fetch('/api/admin/deals', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: dealId })
       });
+      if (res.ok) {
+        toast({ title: "Sent to Discord", description: "Webhook delivered successfully" });
+      } else {
+        toast({ title: "Webhook failed", description: "Failed to send to Discord", variant: "destructive" });
+      }
     } catch (e) {
       console.error('Error sending webhook:', e);
+      toast({ title: "Webhook failed", description: "Failed to send to Discord", variant: "destructive" });
     } finally {
       setSendingWebhook(null);
     }
