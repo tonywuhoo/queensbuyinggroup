@@ -34,7 +34,7 @@ const toastVariants = cva(
         success:
           "border-emerald-500/20 bg-emerald-500/10 text-emerald-600",
         discord:
-          "border-[#5865F2]/20 bg-[#5865F2]/10 text-[#5865F2]",
+          "border-[#5865F2]/30 bg-[#E8EAFD] text-[#5865F2]",
       },
     },
     defaultVariants: {
