@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Package, Clock, CheckCircle, X, Send, AlertTriangle } from "lucide-react";
+import { FileText, Package, Clock, CheckCircle, X, Send, AlertTriangle, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Commitment {
@@ -19,6 +19,19 @@ interface Commitment {
     status: string;
     labelUrl?: string;
   };
+}
+
+interface Warehouse {
+  id: string;
+  code: string;
+  name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  allowDropOff: boolean;
+  allowShipping: boolean;
+  isActive: boolean;
 }
 
 interface LabelFile {
@@ -44,6 +57,7 @@ interface LabelRequest {
 
 export default function LabelsPage() {
   const [commitments, setCommitments] = useState<Commitment[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [labelRequests, setLabelRequests] = useState<LabelRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState<string | null>(null);
@@ -52,27 +66,39 @@ export default function LabelsPage() {
   
   // Cancel confirmation modal
   const [cancelModal, setCancelModal] = useState<LabelRequest | null>(null);
+  
+  // Warehouse selection modal for commitments without delivery set
+  const [setupCommitment, setSetupCommitment] = useState<Commitment | null>(null);
+  const [selectedWarehouse, setSelectedWarehouse] = useState("");
+  const [settingUp, setSettingUp] = useState(false);
 
   const fetchData = async () => {
     try {
-      const [commitmentsRes, labelsRes] = await Promise.all([
+      const [commitmentsRes, labelsRes, warehousesRes] = await Promise.all([
         fetch('/api/commitments'),
-        fetch('/api/labels')
+        fetch('/api/labels'),
+        fetch('/api/warehouses?all=true')
       ]);
       
       if (commitmentsRes.ok) {
         const data = await commitmentsRes.json();
-        // Only show shipping commitments that are pending and don't have label requests
+        // Show all PENDING commitments without label requests
+        // (includes TBD warehouse — button will prompt for warehouse selection)
         setCommitments(data.filter((c: Commitment) => 
-          c.deliveryMethod === 'SHIP' && 
           c.status === 'PENDING' && 
-          !c.labelRequest
+          !c.labelRequest &&
+          c.deliveryMethod !== 'DROP_OFF' // Drop-offs don't need labels
         ));
       }
       
       if (labelsRes.ok) {
         const data = await labelsRes.json();
         setLabelRequests(data);
+      }
+      
+      if (warehousesRes.ok) {
+        const data = await warehousesRes.json();
+        setWarehouses(data);
       }
     } catch (e) {
       console.error('Error fetching data:', e);
@@ -84,6 +110,8 @@ export default function LabelsPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const shippingWarehouses = warehouses.filter(wh => wh.allowShipping && wh.isActive);
 
   const handleRequestLabel = async (commitmentId: string) => {
     setRequesting(commitmentId);
@@ -106,6 +134,54 @@ export default function LabelsPage() {
       setError('Failed to request label');
     } finally {
       setRequesting(null);
+    }
+  };
+
+  // Set delivery to SHIP + warehouse, then request label
+  const handleSetupAndRequestLabel = async () => {
+    if (!setupCommitment || !selectedWarehouse) return;
+    
+    setSettingUp(true);
+    setError("");
+    try {
+      // Step 1: Set delivery method to SHIP and warehouse
+      const updateRes = await fetch('/api/commitments', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: setupCommitment.id,
+          deliveryMethod: 'SHIP',
+          warehouse: selectedWarehouse,
+        })
+      });
+
+      if (!updateRes.ok) {
+        const data = await updateRes.json();
+        setError(data.error || 'Failed to set delivery method');
+        setSettingUp(false);
+        return;
+      }
+
+      // Step 2: Request label
+      const labelRes = await fetch('/api/labels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commitmentId: setupCommitment.id })
+      });
+      
+      if (labelRes.ok) {
+        await fetchData();
+        setSetupCommitment(null);
+        setSelectedWarehouse("");
+      } else {
+        const data = await labelRes.json();
+        setError(data.error || 'Failed to request label');
+      }
+    } catch (e) {
+      console.error('Error:', e);
+      setError('Failed to set up delivery and request label');
+    } finally {
+      setSettingUp(false);
     }
   };
 
@@ -191,7 +267,79 @@ export default function LabelsPage() {
         </div>
       )}
 
-      {/* Available Commitments */}
+      {/* Warehouse Selection Modal */}
+      {setupCommitment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => { setSetupCommitment(null); setSelectedWarehouse(""); }}>
+          <div className="bg-white rounded-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-slate-900">Select Shipping Warehouse</h2>
+                <button onClick={() => { setSetupCommitment(null); setSelectedWarehouse(""); }} className="text-slate-400 hover:text-slate-600">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-sm text-slate-500 mt-1">
+                Choose a warehouse to ship to for <strong>{setupCommitment.deal.title}</strong>
+              </p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 flex items-center gap-2">
+                <Truck className="w-4 h-4 flex-shrink-0" />
+                <span>This will set your delivery method to <strong>Ship</strong> and request a label.</span>
+              </div>
+
+              {shippingWarehouses.length > 0 ? (
+                <div className="space-y-2">
+                  {shippingWarehouses.map((wh) => (
+                    <button
+                      key={wh.code}
+                      type="button"
+                      onClick={() => setSelectedWarehouse(wh.code)}
+                      className={`w-full p-3 rounded-xl border text-left transition-all ${
+                        selectedWarehouse === wh.code
+                          ? "border-queens-purple bg-queens-purple/5"
+                          : "border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          selectedWarehouse === wh.code ? "bg-queens-purple text-white" : "bg-slate-100"
+                        }`}>
+                          <span className="font-bold text-sm">{wh.code}</span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900">{wh.name}</p>
+                          {wh.address && <p className="text-xs text-slate-500">{wh.address}, {wh.city}, {wh.state} {wh.zip}</p>}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 p-4 bg-slate-50 rounded-lg text-center">
+                  No shipping warehouses available. Contact admin.
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => { setSetupCommitment(null); setSelectedWarehouse(""); }}>
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={handleSetupAndRequestLabel}
+                  disabled={!selectedWarehouse || settingUp}
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  {settingUp ? "Setting up..." : "Set & Request Label"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Available Commitments for Label Request */}
       {commitments.length > 0 && (
         <div className="mb-8">
           <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
@@ -201,15 +349,20 @@ export default function LabelsPage() {
           <div className="space-y-3">
             {commitments.map((c) => {
               const qualifies = c.deal.freeLabelMin && c.quantity >= c.deal.freeLabelMin;
+              const needsWarehouse = c.warehouse === 'TBD';
               
               return (
-                <div key={c.id} className="bg-white rounded-xl border border-slate-200 p-4">
+                <div key={c.id} className={`rounded-xl border p-4 ${needsWarehouse ? "bg-purple-50 border-purple-200" : "bg-white border-slate-200"}`}>
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium text-slate-900">{c.deal.title}</p>
                       <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
                         <span>Qty: {c.quantity}</span>
-                        <span>Warehouse: {c.warehouse}</span>
+                        {needsWarehouse ? (
+                          <span className="text-purple-600">No warehouse set</span>
+                        ) : (
+                          <span>Warehouse: {c.warehouse}</span>
+                        )}
                         {qualifies ? (
                           <span className="text-green-600">✓ Free label</span>
                         ) : c.deal.freeLabelMin && (
@@ -219,14 +372,26 @@ export default function LabelsPage() {
                         )}
                       </div>
                     </div>
-                    <Button
-                      onClick={() => handleRequestLabel(c.id)}
-                      disabled={requesting === c.id}
-                      size="sm"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      {requesting === c.id ? 'Requesting...' : 'Request Label'}
-                    </Button>
+                    {needsWarehouse ? (
+                      <Button
+                        onClick={() => { setSetupCommitment(c); setSelectedWarehouse(""); }}
+                        disabled={requesting === c.id}
+                        size="sm"
+                        variant="purple"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        Request Label
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => handleRequestLabel(c.id)}
+                        disabled={requesting === c.id}
+                        size="sm"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        {requesting === c.id ? 'Requesting...' : 'Request Label'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               );

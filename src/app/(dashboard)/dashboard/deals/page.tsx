@@ -179,7 +179,7 @@ export default function DealsPage() {
                       <img
                         src={deal.imageUrl}
                         alt={deal.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = 'none';
                           (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MapPin, Plus, Save, Truck, Package, X, Check } from "lucide-react";
+import { MapPin, Plus, Save, Truck, Package, X, Check, Trash2, AlertTriangle, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,10 @@ interface Warehouse {
   allowDropOff: boolean;
   allowShipping: boolean;
   isActive: boolean;
+  _count?: {
+    commitments: number;
+  };
+  commitmentCount?: number;
 }
 
 export default function AdminSettingsPage() {
@@ -26,6 +30,9 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<Warehouse | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [newWarehouse, setNewWarehouse] = useState({
     code: "",
     name: "",
@@ -40,7 +47,8 @@ export default function AdminSettingsPage() {
 
   const fetchWarehouses = async () => {
     try {
-      const res = await fetch('/api/warehouses');
+      // Admins get ALL warehouses including inactive
+      const res = await fetch('/api/warehouses?all=true');
       if (res.ok) {
         const data = await res.json();
         setWarehouses(data);
@@ -135,6 +143,27 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const handleDeleteWarehouse = async () => {
+    if (!deleteModal) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const res = await fetch(`/api/warehouses?id=${deleteModal.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setWarehouses(warehouses.filter(wh => wh.id !== deleteModal.id));
+        setDeleteModal(null);
+      } else {
+        const data = await res.json();
+        setDeleteError(data.error || 'Failed to delete warehouse');
+      }
+    } catch (e) {
+      console.error('Error deleting warehouse:', e);
+      setDeleteError('Failed to delete warehouse');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-4 lg:p-6 flex items-center justify-center min-h-[60vh]">
@@ -145,6 +174,46 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="p-4 lg:p-6 max-w-4xl mx-auto">
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50" onClick={() => { setDeleteModal(null); setDeleteError(""); }}>
+          <div className="bg-white rounded-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900 text-center mb-2">Delete Warehouse?</h2>
+              <p className="text-sm text-slate-500 text-center mb-4">
+                Are you sure you want to delete <strong>{deleteModal.code} - {deleteModal.name}</strong>?
+              </p>
+              <p className="text-xs text-slate-400 text-center mb-6">
+                This action cannot be undone. Warehouses with commitment history cannot be deleted.
+              </p>
+
+              {deleteError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => { setDeleteModal(null); setDeleteError(""); }}>
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-red-600 hover:bg-red-700"
+                  onClick={handleDeleteWarehouse}
+                  disabled={deleting}
+                >
+                  {deleting ? "Deleting..." : "Delete Warehouse"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit Warehouse Modal */}
       {editingWarehouse && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setEditingWarehouse(null)}>
@@ -416,13 +485,23 @@ export default function AdminSettingsPage() {
                     </label>
                   </div>
                   
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setEditingWarehouse(wh)}
-                  >
-                    Edit
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setEditingWarehouse(wh)}
+                    >
+                      Edit
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => { setDeleteModal(wh); setDeleteError(""); }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -444,6 +523,7 @@ export default function AdminSettingsPage() {
           <li><strong>Drop-off:</strong> Vendors can visit this location in person</li>
           <li><strong>Shipping:</strong> Vendors can ship to this location</li>
           <li><strong>Active:</strong> Warehouse is available for new commitments</li>
+          <li><strong>Delete:</strong> Only possible if no commitments have ever used this warehouse. Otherwise, deactivate it.</li>
         </ul>
       </div>
     </div>

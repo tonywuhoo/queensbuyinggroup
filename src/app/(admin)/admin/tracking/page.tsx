@@ -6,14 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-const WAREHOUSES = [
-  { id: "ALL", label: "All" },
-  { id: "MA", label: "MA" },
-  { id: "NJ", label: "NJ" },
-  { id: "CT", label: "CT" },
-  { id: "NY", label: "NY" },
-  { id: "DE", label: "DE" },
-];
+interface WarehouseOption {
+  id: string;
+  label: string;
+}
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   PENDING: { label: "Pending", color: "bg-amber-100 text-amber-700" },
@@ -58,6 +54,7 @@ interface TrackingData {
 
 export default function AdminTrackingPage() {
   const [trackings, setTrackings] = useState<TrackingData[]>([]);
+  const [warehouseOptions, setWarehouseOptions] = useState<WarehouseOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeWarehouse, setActiveWarehouse] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -90,6 +87,29 @@ export default function AdminTrackingPage() {
       setLoading(false);
     }
   };
+
+  const fetchWarehouses = async () => {
+    try {
+      const res = await fetch('/api/warehouses?all=true');
+      if (res.ok) {
+        const data = await res.json();
+        const options: WarehouseOption[] = [
+          { id: "ALL", label: "All" },
+          ...data.map((wh: any) => ({ 
+            id: wh.code, 
+            label: wh.isActive ? wh.code : `${wh.code} (inactive)` 
+          })),
+        ];
+        setWarehouseOptions(options);
+      }
+    } catch (e) {
+      console.error('Error fetching warehouses:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchWarehouses();
+  }, []);
 
   useEffect(() => {
     fetchTrackings();
@@ -163,7 +183,7 @@ export default function AdminTrackingPage() {
             <Package className="w-5 h-5 text-slate-400" />
             <span className="text-sm font-medium text-slate-600">Warehouse:</span>
             <div className="flex gap-2 flex-wrap">
-              {WAREHOUSES.map((wh) => (
+              {warehouseOptions.map((wh) => (
                 <button
                   key={wh.id}
                   onClick={() => setActiveWarehouse(wh.id)}

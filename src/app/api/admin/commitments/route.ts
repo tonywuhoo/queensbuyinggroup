@@ -82,7 +82,7 @@ export async function PUT(request: NextRequest) {
     if (error) return errorResponse(error, 403);
 
     const body = await request.json();
-    const { id, status, notes, invoiceUrl, invoiceAmount } = body;
+    const { id, status, notes, invoiceUrl, invoiceAmount, payoutRate } = body;
 
     if (!id) {
       return errorResponse("Commitment ID required");
@@ -90,7 +90,7 @@ export async function PUT(request: NextRequest) {
 
     const commitment = await db.commitment.findUnique({
       where: { id },
-      include: { user: true }
+      include: { user: true, invoice: true }
     });
 
     if (!commitment) {
@@ -100,6 +100,18 @@ export async function PUT(request: NextRequest) {
     const updateData: any = {};
     if (status) updateData.status = status;
     if (notes !== undefined) updateData.notes = notes;
+
+    // Admin price edit
+    if (payoutRate !== undefined) {
+      const rate = Number(payoutRate);
+      if (isNaN(rate) || rate <= 0) {
+        return errorResponse("Payout rate must be a positive number");
+      }
+      if (commitment.status === "FULFILLED") {
+        return errorResponse("Cannot edit payout rate on a fulfilled commitment");
+      }
+      updateData.payoutRate = rate;
+    }
 
     // If fulfilling with invoice
     if (status === "FULFILLED" && invoiceUrl) {
