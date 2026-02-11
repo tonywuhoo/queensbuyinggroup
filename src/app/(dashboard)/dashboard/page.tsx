@@ -34,6 +34,7 @@ interface Commitment {
 
 export default function SellerDashboard() {
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [totalActiveDeals, setTotalActiveDeals] = useState(0);
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
@@ -50,6 +51,7 @@ export default function SellerDashboard() {
         
         if (dealsRes.ok) {
           const dealsData = await dealsRes.json();
+          setTotalActiveDeals(dealsData.length);
           setDeals(dealsData.slice(0, 5)); // Show top 5
         }
         
@@ -112,7 +114,7 @@ export default function SellerDashboard() {
       {/* Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <div className="bg-white rounded-xl p-4 border border-slate-200">
-          <p className="text-2xl font-bold text-slate-900">{deals.length}</p>
+          <p className="text-2xl font-bold text-slate-900">{totalActiveDeals}</p>
           <p className="text-xs text-slate-500">Active Deals</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-200">
